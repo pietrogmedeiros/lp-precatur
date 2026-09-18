@@ -1,0 +1,183 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { timingSafeEqual } from "node:crypto";
+import express, { type NextFunction, type Request, type Response } from "express";
+import type { LeadField, LeadResponse, PublicConfig } from "../shared/lead.js";
+import { leadRequestSchema } from "./schema.js";
+import type { AppConfig } from "./config.js";
+import type { LeadDelivery } from "./delivery.js";
+import type { LeadStore, StoredLead } from "./store.js";
+
+interface Deps {
+  config: AppConfig;
+  store: LeadStore;
+  delivery: LeadDelivery;
+}
+
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' https://fonts.googleapis.com",
+  "font-src https://fonts.gstatic.com",
+  "img-src 'self' data:",
+  "connect-src 'self' https://servicodados.ibge.gov.br",
+  "base-uri 'none'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
+
+function securityHeaders(_req: Request, res: Response, next: NextFunction) {
+  res.setHeader("Content-Security-Policy", CSP);
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("X-Frame-Options", "DENY");
+  next();
+}
+
+/** Limite simples por IP, em janela fixa de 1 minuto. */
+function rateLimit(perMinute: number) {
+  const hits = new Map<string, { count: number; resetAt: number }>();
+  return (req: Request, res: Response<LeadResponse>, next: NextFunction) => {
+    const now = Date.now();
+    const key = req.ip ?? "unknown";
+    let entry = hits.get(key);
+    if (!entry || entry.resetAt <= now) {
+      entry = { count: 0, resetAt: now + 60_000 };
+      hits.set(key, entry);
+      if (hits.size > 10_000) {
+        for (const [k, v] of hits) if (v.resetAt <= now) hits.delete(k);
+      }
+    }
+    entry.count += 1;
+    if (entry.count > perMinute) {
+      res.setHeader("Retry-After", Math.ceil((entry.resetAt - now) / 1000));
+      res.status(429).json({ ok: false, erros: { geral: "Muitas tentativas. Aguarde um instante." } });
+      return;
+    }
+    next();
+  };
+}
+
+function safeEqual(a: string, b: string): boolean {
+  const ba = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ba.length === bb.length && timingSafeEqual(ba, bb);
+}
+
+function toCsv(leads: StoredLead[]): string {
+  const cols = [
+    "recebido_em", "nome", "telefone", "cidade", "uf", "agente", "evento", "enviado", "tentativas", "ultimo_erro", "id",
+  ] as const;
+  const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const rows = leads.map((l) => cols.map((c) => esc(l[c])).join(";"));
+  // BOM + ";" para o Excel em português abrir com acentos e colunas corretas.
+  return "\ufeff" + [cols.join(";"), ...rows].join("\r\n");
+}
+
+export function createApp({ config, store, delivery }: Deps) {
+  const app = express();
+  app.disable("x-powered-by");
+  app.set("trust proxy", config.trustProxy);
+  app.use(securityHeaders);
+
+  const publicConfig: PublicConfig = {
+    evento: config.evento,
+    agentes: config.agentes,
+    autoResetSegundos: config.autoResetSegundos,
+  };
+  // Injeta a configuração na página (sem requisição extra e sem "piscar" os selects).
+  const configJson = JSON.stringify(publicConfig).replace(/</g, "\\u003c");
+  const indexHtml = readFileSync(path.join(config.publicDir, "index.html"), "utf8").replace(
+    "<!--APP_CONFIG-->",
+    `<script id="app-config" type="application/json">${configJson}</script>`,
+  );
+
+  const sendIndex = (_req: Request, res: Response) => {
+    res.setHeader("Cache-Control", "no-cache");
+    res.type("html").send(indexHtml);
+  };
+  app.get(["/", "/index.html"], sendIndex);
+  app.use(express.static(config.publicDir, { index: false, maxAge: "1h" }));
+
+  app.get("/api/health", (_req, res) => {
+    res.json({ ok: true, leads: store.all().length, pendentes: store.pending().length });
+  });
+
+  app.post(
+    "/api/leads",
+    rateLimit(config.rateLimitPerMinute),
+    express.json({ limit: "10kb" }),
+    async (req: Request, res: Response<LeadResponse>) => {
+      const parsed = leadRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        const erros: LeadResponse["erros"] = {};
+        for (const issue of parsed.error.issues) {
+          const field = (issue.path[0] as LeadField | undefined) ?? "geral";
+          erros[field] ??= issue.message;
+        }
+        res.status(400).json({ ok: false, erros });
+        return;
+      }
+
+      const { website, ...data } = parsed.data;
+
+      // Bot caiu no honeypot: finge sucesso e descarta.
+      if (website) {
+        res.status(201).json({ ok: true });
+        return;
+      }
+
+      if (!config.agentes.includes(data.agente)) {
+        res.status(400).json({ ok: false, erros: { agente: "Selecione quem te atendeu." } });
+        return;
+      }
+
+      // O front reenvia leads que ficaram na fila offline; o id evita duplicar.
+      if (store.has(data.id)) {
+        res.status(200).json({ ok: true, duplicado: true });
+        return;
+      }
+
+      const lead: StoredLead = {
+        ...data,
+        evento: config.evento,
+        recebido_em: new Date().toISOString(),
+        enviado: false,
+        tentativas: 0,
+      };
+      await store.save(lead);
+      // O lead já está salvo em disco: responde sucesso mesmo se o n8n falhar (o reenvio é automático).
+      await delivery.deliver(lead);
+      res.status(201).json({ ok: true });
+    },
+  );
+
+  // Exportação CSV: /admin/leads.csv?token=SEU_TOKEN (desativado se ADMIN_TOKEN estiver vazio).
+  app.get("/admin/leads.csv", (req, res) => {
+    const header = req.get("authorization")?.replace(/^Bearer\s+/i, "");
+    const token = typeof req.query.token === "string" ? req.query.token : header;
+    if (!config.adminToken || !token || !safeEqual(token, config.adminToken)) {
+      res.status(404).send("Not found");
+      return;
+    }
+    const date = new Date().toISOString().slice(0, 10);
+    res.setHeader("Content-Disposition", `attachment; filename="leads-precatur-${date}.csv"`);
+    res.setHeader("Cache-Control", "no-store");
+    res.type("text/csv; charset=utf-8").send(toCsv(store.all()));
+  });
+
+  app.use((_req, res) => {
+    res.status(404).send("Not found");
+  });
+
+  app.use((err: Error & { status?: number; type?: string }, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status ?? 500;
+    if (status >= 500) console.error("[server]", err);
+    res.status(status).json({
+      ok: false,
+      erros: { geral: status === 400 ? "Requisição inválida." : "Erro interno. Tente novamente." },
+    });
+  });
+
+  return app;
+}

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Precatur | Antecipe seu precatório</title>
+  <meta name="description" content="Cadastre-se e receba uma análise gratuita do seu precatório. Antecipe com segurança em até 24h úteis.">
+  <meta name="theme-color" content="#34474D">
+  <link rel="icon" href="/assets/favicon.png">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <section class="hero">
+    <div class="container">
+      <header class="top">
+        <img src="/assets/logo-precatur.png" alt="Precatur" width="188" height="40">
+        <span class="event-badge"><span class="dot"></span><span id="event-name"></span></span>
+      </header>
+
+      <div class="hero-grid">
+        <div class="pitch">
+          <p class="eyebrow">Antecipação de precatórios</p>
+          <h1>Seu precatório não precisa esperar <em>anos</em> para ser pago.</h1>
+          <p class="lead">Deixe seu contato e receba uma <strong>análise gratuita e sem compromisso</strong>. Antecipe com segurança em até 24h úteis.</p>
+
+          <ul class="benefits">
+            <li>
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
+              Análise gratuita, sem compromisso
+            </li>
+            <li>
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+              Pagamento em até 24h úteis
+            </li>
+            <li>
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span>
+              Contrato formal e suporte jurídico completo
+            </li>
+            <li>
+              <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+              Sem taxas antecipadas
+            </li>
+          </ul>
+
+          <div class="stats">
+            <div class="stat"><strong>R$ 250 mi+</strong><span>em precatórios negociados</span></div>
+            <div class="stat"><strong>500+</strong><span>operações em 2025</span></div>
+            <div class="stat"><strong>24h</strong><span>úteis para pagamento</span></div>
+          </div>
+        </div>
+
+        <!-- FORMULÁRIO -->
+        <div class="form-wrap" id="cadastro">
+          <div class="form-card" id="form-card">
+            <div class="ribbon">Análise 100% gratuita</div>
+
+            <div class="form-body">
+              <h2>Quero antecipar meu precatório</h2>
+              <p class="sub">Preencha seus dados e um especialista entra em contato.</p>
+
+              <div class="form-alert" id="form-alert" role="alert"></div>
+
+              <form id="lead-form" novalidate autocomplete="on">
+                <div class="field" data-field="nome">
+                  <label class="lbl" for="nome">Nome completo <span class="req">*</span></label>
+                  <div class="control">
+                    <input type="text" id="nome" name="nome" placeholder="Como podemos te chamar?" autocomplete="name" required minlength="3" maxlength="120">
+                  </div>
+                  <p class="err">Informe seu nome completo.</p>
+                </div>
+
+                <div class="field" data-field="telefone">
+                  <label class="lbl" for="telefone">Telefone / WhatsApp com DDD <span class="req">*</span></label>
+                  <div class="control">
+                    <input type="tel" id="telefone" name="telefone" placeholder="(11) 99999-9999" autocomplete="tel-national" inputmode="numeric" required maxlength="19">
+                  </div>
+                  <p class="err">Informe um telefone válido com DDD.</p>
+                </div>
+
+                <div class="row">
+                  <div class="field" data-field="cidade">
+                    <label class="lbl" for="cidade">Cidade <span class="req">*</span></label>
+                    <div class="control">
+                      <input type="text" id="cidade" name="cidade" placeholder="Sua cidade" autocomplete="address-level2" list="cidades-list" required maxlength="80">
+                      <datalist id="cidades-list"></datalist>
+                    </div>
+                    <p class="err">Informe sua cidade.</p>
+                  </div>
+                  <div class="field" data-field="uf">
+                    <label class="lbl" for="uf">UF <span class="req">*</span></label>
+                    <div class="control">
+                      <select id="uf" name="uf" autocomplete="address-level1" required>
+                        <option value="" disabled selected>UF</option>
+                      </select>
+                    </div>
+                    <p class="err">Selecione.</p>
+                  </div>
+                </div>
+
+                <div class="field" data-field="agente">
+                  <label class="lbl" for="agente">Agente Precatur que te atendeu <span class="req">*</span></label>
+                  <div class="control">
+                    <select id="agente" name="agente" required>
+                      <option value="" disabled selected>Selecione o agente</option>
+                    </select>
+                  </div>
+                  <p class="err">Selecione quem te atendeu.</p>
+                </div>
+
+                <!-- Honeypot anti-bot: invisível para pessoas -->
+                <div class="hp" aria-hidden="true">
+                  <label for="website">Não preencha</label>
+                  <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+                </div>
+
+                <label class="consent" id="consent-wrap">
+                  <input type="checkbox" id="consent" name="consent" required>
+                  <span>Autorizo a Precatur a entrar em contato comigo por telefone e WhatsApp sobre a análise do meu precatório, conforme a LGPD.</span>
+                </label>
+
+                <button type="submit" class="btn" id="submit-btn">
+                  <span class="btn-label">Quero minha análise gratuita</span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                  <span class="spinner" aria-hidden="true"></span>
+                </button>
+
+                <p class="secure">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                  Seus dados estão seguros e não serão compartilhados.
+                </p>
+              </form>
+            </div>
+
+            <div class="success" aria-live="polite">
+              <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></div>
+              <h2>Cadastro recebido!</h2>
+              <p id="success-msg">Obrigado! Em breve um especialista da Precatur entrará em contato.</p>
+              <button type="button" class="btn secondary" id="new-lead">Fazer novo cadastro</button>
+              <p class="countdown" id="countdown"></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mobile-extra">
+          <div class="stats">
+            <div class="stat"><strong>R$ 250 mi+</strong><span>negociados</span></div>
+            <div class="stat"><strong>500+</strong><span>operações em 2025</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="how">
+    <div class="container">
+      <h3>Como funciona</h3>
+      <p class="how-sub">Simples, seguro e transparente, do primeiro contato ao pagamento.</p>
+      <ol class="steps">
+        <li><strong>Análise gratuita</strong><p>Avaliamos seu precatório sem custo e sem compromisso.</p></li>
+        <li><strong>Proposta personalizada</strong><p>Você recebe uma proposta clara, feita para o seu caso.</p></li>
+        <li><strong>Contrato formal</strong><p>Tudo documentado, com suporte jurídico completo.</p></li>
+        <li><strong>Pagamento em 24h</strong><p>Após a assinatura, o valor cai em até 24h úteis.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <img src="/assets/logo-precatur.png" alt="Precatur" width="122" height="26">
+      <span>
+        <a href="https://precatur.com.br" target="_blank" rel="noopener">precatur.com.br</a> ·
+        <a href="mailto:contato@precatur.com.br">contato@precatur.com.br</a> ·
+        (27) 99658-4654
+      </span>
+    </div>
+  </footer>
+
+
+  <!--APP_CONFIG-->
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
