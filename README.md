@@ -63,6 +63,21 @@ docker build -t lp-precatur .
 docker run -p 3000:3000 --env-file .env -v $(pwd)/data:/app/data lp-precatur
 ```
 
+### Easypanel
+
+1. **Fonte:** GitHub `pietrogmedeiros/lp-precatur`, branch `main`.
+2. **Construção:** Dockerfile (caminho `Dockerfile`).
+3. **Ambiente:**
+   ```
+   N8N_WEBHOOK_URL=https://SEU-N8N/webhook/evento
+   EVENT_NAME=Evento de Captação em SP
+   AGENTS=Thales,Calebe,Henrique,Rhuan,Bernardo
+   ADMIN_TOKEN=um-token-longo-e-secreto
+   TRUST_PROXY=true
+   ```
+4. **Montagens:** volume em `/app/data`, para não perder os leads a cada deploy.
+5. **Domínios:** porta do proxy **3000**.
+
 ## Configuração (`.env`)
 
 | Variável | Padrão | Descrição |
