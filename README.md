@@ -87,6 +87,7 @@ docker run -p 3000:3000 --env-file .env -v $(pwd)/data:/app/data lp-precatur
 | `AGENTS` | `Thales,Calebe,Henrique,Rhuan,Bernardo` | Agentes da lista, separados por vírgula |
 | `AUTO_RESET_SECONDS` | `15` | Volta ao formulário após o sucesso (`0` desativa) |
 | `ADMIN_TOKEN` | (vazio) | Libera o CSV em `/admin/leads.csv?token=...` |
+| `METRICS_TOKEN` | (vazio) | Vazio: `/metrics` aberto. Preenchido: o painel pede esse token |
 | `PORT` / `HOST` | `3000` / `0.0.0.0` | Onde o servidor escuta |
 | `DATA_DIR` | `data` | Pasta do `leads.jsonl` |
 | `RETRY_INTERVAL_MS` | `60000` | Intervalo de reenvio ao n8n |
@@ -100,6 +101,9 @@ docker run -p 3000:3000 --env-file .env -v $(pwd)/data:/app/data lp-precatur
 |---|---|---|
 | `GET` | `/` | Landing page |
 | `POST` | `/api/leads` | Recebe um lead (201 criado, 200 duplicado, 400 com erros por campo) |
+| `GET` | `/metrics` | Painel: leads por agente, por hora e por UF, e a lista de leads com filtro por agente |
+| `GET` | `/api/metrics` | Dados do painel em JSON |
+| `GET` | `/metrics/leads.csv` | CSV com a mesma regra de acesso do painel |
 | `GET` | `/api/health` | Status, total de leads e pendentes de envio ao n8n |
 | `GET` | `/admin/leads.csv?token=...` | Exporta todos os leads em CSV (abre direto no Excel) |
 

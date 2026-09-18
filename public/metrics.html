@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Métricas | Precatur</title>
+  <meta name="theme-color" content="#34474D">
+  <link rel="icon" href="/assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/metrics.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="wrap bar-inner">
+      <div class="brand">
+        <img src="/assets/logo-precatur.png" alt="Precatur" width="150" height="32">
+        <span class="sep" aria-hidden="true"></span>
+        <div>
+          <p class="bar-title">Painel de captação</p>
+          <p class="bar-sub" id="evento">—</p>
+        </div>
+      </div>
+      <div class="bar-actions" id="actions" hidden>
+        <span class="updated" id="updated" aria-live="polite"></span>
+        <button type="button" class="btn ghost" id="refresh" title="Atualizar agora">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+          <span>Atualizar</span>
+        </button>
+        <a class="btn ghost" id="csv" href="#" download>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          <span>CSV</span>
+        </a>
+        <button type="button" class="btn ghost" id="logout">Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Login -->
+  <main class="wrap login" id="login-view" hidden>
+    <form class="card login-card" id="login-form">
+      <h1>Acesso restrito</h1>
+      <p class="muted">Informe o token de administrador para ver as métricas dos leads.</p>
+      <label class="lbl" for="token">Token</label>
+      <input type="password" id="token" name="token" autocomplete="current-password" required>
+      <p class="login-err" id="login-err" role="alert"></p>
+      <button type="submit" class="btn primary">Entrar</button>
+    </form>
+  </main>
+
+  <!-- Painel -->
+  <main class="wrap dash" id="dash-view" hidden>
+    <section class="kpis" aria-label="Resumo">
+      <div class="card kpi"><p class="kpi-label">Leads no total</p><p class="kpi-value" id="kpi-total">0</p></div>
+      <div class="card kpi"><p class="kpi-label">Leads hoje</p><p class="kpi-value" id="kpi-hoje">0</p></div>
+      <div class="card kpi"><p class="kpi-label">Agentes com leads</p><p class="kpi-value" id="kpi-agentes">0</p></div>
+      <div class="card kpi"><p class="kpi-label">Envio ao n8n</p><p class="kpi-status" id="kpi-n8n"></p></div>
+    </section>
+
+    <section class="grid-2">
+      <div class="card">
+        <div class="card-head">
+          <h2>Leads por agente</h2>
+          <p class="muted small">Clique em um agente para ver os leads dele</p>
+        </div>
+        <ol class="ranking" id="ranking"></ol>
+      </div>
+
+      <div class="stack">
+        <div class="card">
+          <div class="card-head">
+            <h2>Leads por hora (hoje)</h2>
+            <p class="muted small" id="hours-sub"></p>
+          </div>
+          <div class="columns" id="hours" role="img"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Leads por UF</h2></div>
+          <ol class="ufs" id="ufs"></ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head table-head">
+        <h2 id="table-title">Leads</h2>
+        <div class="filters">
+          <select id="filter-agent" aria-label="Filtrar por agente">
+            <option value="">Todos os agentes</option>
+          </select>
+          <input type="search" id="filter-q" placeholder="Buscar nome, telefone, cidade…" aria-label="Buscar">
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Data/hora</th>
+              <th>Nome</th>
+              <th>Telefone</th>
+              <th>Cidade/UF</th>
+              <th>Agente</th>
+              <th>n8n</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <p class="empty" id="empty" hidden>Nenhum lead encontrado.</p>
+      </div>
+    </section>
+  </main>
+
+  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+
+  <script type="module" src="/js/metrics.js"></script>
+</body>
+</html>

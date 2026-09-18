@@ -30,6 +30,7 @@ export interface AppConfig {
   webhookTimeoutMs: number;
   retryIntervalMs: number;
   adminToken: string;
+  metricsToken: string;
   rateLimitPerMinute: number;
   evento: string;
   agentes: string[];
@@ -47,6 +48,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     webhookTimeoutMs: int(env.N8N_TIMEOUT_MS, 10_000),
     retryIntervalMs: int(env.RETRY_INTERVAL_MS, 60_000),
     adminToken: env.ADMIN_TOKEN ?? "",
+    metricsToken: env.METRICS_TOKEN ?? "",
     rateLimitPerMinute: int(env.RATE_LIMIT_PER_MINUTE, 60),
     evento: env.EVENT_NAME ?? "Evento de Captação em SP",
     agentes: list(env.AGENTS, ["Thales", "Calebe", "Henrique", "Rhuan", "Bernardo"]),

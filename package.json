@@ -9,10 +9,10 @@
   },
   "scripts": {
     "dev": "concurrently -k -n client,server -c cyan,green \"npm:dev:client\" \"npm:dev:server\"",
-    "dev:client": "esbuild src/client/main.ts --bundle --format=esm --target=es2020 --sourcemap --outfile=public/js/app.js --watch=forever",
+    "dev:client": "esbuild app=src/client/main.ts metrics=src/client/metrics.ts --bundle --format=esm --target=es2020 --sourcemap --outdir=public/js --watch=forever",
     "dev:server": "tsx watch src/server/index.ts",
     "build": "npm run build:client && npm run build:server",
-    "build:client": "esbuild src/client/main.ts --bundle --minify --format=esm --target=es2020 --outfile=public/js/app.js",
+    "build:client": "esbuild app=src/client/main.ts metrics=src/client/metrics.ts --bundle --minify --format=esm --target=es2020 --outdir=public/js",
     "build:server": "tsc -p tsconfig.json",
     "start": "node dist/server/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json",

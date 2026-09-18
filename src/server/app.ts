@@ -3,6 +3,7 @@ import path from "node:path";
 import { timingSafeEqual } from "node:crypto";
 import express, { type NextFunction, type Request, type Response } from "express";
 import type { LeadField, LeadResponse, PublicConfig } from "../shared/lead.js";
+import { buildMetrics } from "./metrics.js";
 import { leadRequestSchema } from "./schema.js";
 import type { AppConfig } from "./config.js";
 import type { LeadDelivery } from "./delivery.js";
@@ -64,6 +65,12 @@ function safeEqual(a: string, b: string): boolean {
   return ba.length === bb.length && timingSafeEqual(ba, bb);
 }
 
+/** Token via "Authorization: Bearer ..." ou ?token=... */
+function adminTokenFrom(req: Request): string | undefined {
+  const header = req.get("authorization")?.replace(/^Bearer\s+/i, "");
+  return header || (typeof req.query.token === "string" ? req.query.token : undefined);
+}
+
 function toCsv(leads: StoredLead[]): string {
   const cols = [
     "recebido_em", "nome", "telefone", "cidade", "uf", "agente", "evento", "enviado", "tentativas", "ultimo_erro", "id",
@@ -97,6 +104,13 @@ export function createApp({ config, store, delivery }: Deps) {
     res.type("html").send(indexHtml);
   };
   app.get(["/", "/index.html"], sendIndex);
+
+  const metricsHtml = readFileSync(path.join(config.publicDir, "metrics.html"), "utf8");
+  app.get("/metrics", (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    res.type("html").send(metricsHtml);
+  });
   app.use(express.static(config.publicDir, { index: false, maxAge: "1h" }));
 
   app.get("/api/health", (_req, res) => {
@@ -152,18 +166,50 @@ export function createApp({ config, store, delivery }: Deps) {
     },
   );
 
-  // Exportação CSV: /admin/leads.csv?token=SEU_TOKEN (desativado se ADMIN_TOKEN estiver vazio).
-  app.get("/admin/leads.csv", (req, res) => {
-    const header = req.get("authorization")?.replace(/^Bearer\s+/i, "");
-    const token = typeof req.query.token === "string" ? req.query.token : header;
-    if (!config.adminToken || !token || !safeEqual(token, config.adminToken)) {
-      res.status(404).send("Not found");
-      return;
-    }
+  const sendCsv = (res: Response) => {
     const date = new Date().toISOString().slice(0, 10);
     res.setHeader("Content-Disposition", `attachment; filename="leads-precatur-${date}.csv"`);
     res.setHeader("Cache-Control", "no-store");
     res.type("text/csv; charset=utf-8").send(toCsv(store.all()));
+  };
+
+  const isAdmin = (req: Request) => {
+    const token = adminTokenFrom(req);
+    return Boolean(config.adminToken && token && safeEqual(token, config.adminToken));
+  };
+
+  // Painel /metrics: aberto por padrão; com METRICS_TOKEN definido, passa a exigir o token.
+  const canViewMetrics = (req: Request) => {
+    if (!config.metricsToken) return true;
+    const token = adminTokenFrom(req);
+    return Boolean(token && safeEqual(token, config.metricsToken));
+  };
+
+  app.get("/api/metrics", rateLimit(config.rateLimitPerMinute), (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    if (!canViewMetrics(req)) {
+      res.status(401).json({ ok: false, erro: "Token inválido." });
+      return;
+    }
+    res.json(buildMetrics(store.all(), { evento: config.evento, agentes: config.agentes }));
+  });
+
+  // CSV do painel (mesma regra de acesso do /metrics).
+  app.get("/metrics/leads.csv", (req, res) => {
+    if (!canViewMetrics(req)) {
+      res.status(401).send("Token inválido.");
+      return;
+    }
+    sendCsv(res);
+  });
+
+  // Exportação CSV: /admin/leads.csv?token=SEU_TOKEN (desativado se ADMIN_TOKEN estiver vazio).
+  app.get("/admin/leads.csv", (req, res) => {
+    if (!isAdmin(req)) {
+      res.status(404).send("Not found");
+      return;
+    }
+    sendCsv(res);
   });
 
   app.use((_req, res) => {

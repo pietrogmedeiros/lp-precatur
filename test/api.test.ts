@@ -170,6 +170,28 @@ describe("API de leads", () => {
     assert.equal(reloaded.pending().length, 0);
   });
 
+  it("serve o painel /metrics e os dados agregados por agente", async () => {
+    const page = await fetch(`${baseUrl}/metrics`);
+    assert.equal(page.status, 200);
+    assert.match(page.headers.get("x-robots-tag") ?? "", /noindex/);
+
+    const res = await fetch(`${baseUrl}/api/metrics`);
+    assert.equal(res.status, 200);
+    const m = (await res.json()) as {
+      total: number;
+      agentes: { agente: string; total: number }[];
+      leads: { agente: string; nome: string }[];
+    };
+    assert.equal(m.total, store.all().length);
+    assert.equal(m.agentes.length, 5, "agentes sem leads também aparecem");
+    assert.equal(m.agentes[0]?.agente, "Calebe");
+    assert.equal(m.agentes[0]?.total, m.total);
+    assert.equal(m.leads[0]?.nome, "Maria da Silva");
+
+    const csv = await fetch(`${baseUrl}/metrics/leads.csv`);
+    assert.equal(csv.status, 200);
+  });
+
   it("protege o CSV com token", async () => {
     assert.equal((await fetch(`${baseUrl}/admin/leads.csv`)).status, 404);
     assert.equal((await fetch(`${baseUrl}/admin/leads.csv?token=errado`)).status, 404);
