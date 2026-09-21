@@ -73,7 +73,8 @@ function adminTokenFrom(req: Request): string | undefined {
 
 function toCsv(leads: StoredLead[]): string {
   const cols = [
-    "recebido_em", "nome", "telefone", "cidade", "uf", "agente", "evento", "enviado", "tentativas", "ultimo_erro", "id",
+    "recebido_em", "nome", "telefone", "cidade", "uf", "agente", "perfil", "tem_precatorio", "tipo_precatorio",
+    "prioridade", "observacoes", "evento", "enviado", "tentativas", "ultimo_erro", "id",
   ] as const;
   const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const rows = leads.map((l) => cols.map((c) => esc(l[c])).join(";"));

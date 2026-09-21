@@ -1,5 +1,31 @@
-import type { AgentMetrics, MetricsLead, MetricsResponse } from "../shared/metrics.js";
+import { PERFIS, PRIORIDADES, TIPOS_PRECATORIO } from "../shared/lead.js";
+import type { AgentMetrics, Breakdown, MetricsLead, MetricsResponse } from "../shared/metrics.js";
 import type { StoredLead } from "./store.js";
+
+/** Leads antigos (anteriores ao campo) e valores fora da lista caem aqui. */
+const SEM_RESPOSTA = "Não informado";
+
+/**
+ * Conta os leads por categoria mantendo as opções fixas na ordem do formulário,
+ * mesmo zeradas — um "Alta: 0" diz tanto quanto um "Alta: 12".
+ */
+function breakdown(leads: StoredLead[], fixas: readonly string[], key: (l: StoredLead) => string): Breakdown[] {
+  const counts = new Map<string, number>(fixas.map((r) => [r, 0]));
+  for (const lead of leads) {
+    const rotulo = key(lead);
+    counts.set(rotulo, (counts.get(rotulo) ?? 0) + 1);
+  }
+  // Extras (Não informado, valores antigos) vão para o fim, sem poluir quando estão zerados.
+  return [...counts.entries()]
+    .filter(([rotulo, total]) => total > 0 || fixas.includes(rotulo))
+    .map(([rotulo, total]) => ({ rotulo, total }));
+}
+
+/** Rótulo do precatório na visão consolidada: o tipo de quem tem, "Não tem" de quem não tem. */
+function precatorioLabel(lead: StoredLead): string {
+  if (lead.tem_precatorio === "Não tem") return "Não tem";
+  return lead.tipo_precatorio ?? SEM_RESPOSTA;
+}
 
 export const TIME_ZONE = "America/Sao_Paulo";
 
@@ -53,6 +79,11 @@ export function buildMetrics(
       cidade: l.cidade,
       uf: l.uf,
       agente: l.agente,
+      ...(l.perfil ? { perfil: l.perfil } : {}),
+      ...(l.tem_precatorio ? { tem_precatorio: l.tem_precatorio } : {}),
+      ...(l.tipo_precatorio ? { tipo_precatorio: l.tipo_precatorio } : {}),
+      ...(l.prioridade ? { prioridade: l.prioridade } : {}),
+      ...(l.observacoes ? { observacoes: l.observacoes } : {}),
       evento: l.evento,
       recebido_em: l.recebido_em,
       enviado: l.enviado,
@@ -70,6 +101,10 @@ export function buildMetrics(
     pendentes,
     agentes: [...byAgent.values()].sort((a, b) => b.total - a.total || a.agente.localeCompare(b.agente)),
     ufs: [...byUf.entries()].map(([uf, total]) => ({ uf, total })).sort((a, b) => b.total - a.total),
+    prioridades: breakdown(leads, PRIORIDADES, (l) => l.prioridade ?? SEM_RESPOSTA),
+    perfis: breakdown(leads, PERFIS, (l) => l.perfil ?? SEM_RESPOSTA),
+    precatorios: breakdown(leads, [...TIPOS_PRECATORIO, "Não tem"], precatorioLabel),
+    alta_prioridade: leads.filter((l) => l.prioridade === "Alta").length,
     horas_hoje: hours,
     leads: metricsLeads,
   };

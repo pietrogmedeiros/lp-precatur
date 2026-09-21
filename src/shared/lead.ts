@@ -10,6 +10,21 @@ export const UFS = [
 
 export type UF = (typeof UFS)[number];
 
+/** Quem é a pessoa do outro lado: define a abordagem comercial. */
+export const PERFIS = ["Advogado", "Originador", "Intermediário", "Fundo", "Outros"] as const;
+export type Perfil = (typeof PERFIS)[number];
+
+export const TEM_PRECATORIO = ["Tem", "Não tem"] as const;
+export type TemPrecatorio = (typeof TEM_PRECATORIO)[number];
+
+export const TIPOS_PRECATORIO = ["Municipal", "Estadual", "Federal"] as const;
+export type TipoPrecatorio = (typeof TIPOS_PRECATORIO)[number];
+
+export const PRIORIDADES = ["Alta", "Média", "Baixa"] as const;
+export type Prioridade = (typeof PRIORIDADES)[number];
+
+export const OBSERVACOES_MAX = 1000;
+
 /**
  * Dígitos do telefone sem código do país (+55) nem zero de operadora/DDD (027...).
  * Ex.: "+55 (27) 99658-4654" -> "27996584654".
@@ -46,6 +61,12 @@ export interface LeadFields {
   cidade: string;
   uf: UF;
   agente: string;
+  perfil: Perfil;
+  tem_precatorio: TemPrecatorio;
+  /** Só existe quando tem_precatorio é "Tem". */
+  tipo_precatorio?: TipoPrecatorio;
+  prioridade: Prioridade;
+  observacoes?: string;
   consentimento_lgpd: true;
 }
 
@@ -61,6 +82,8 @@ export interface LeadRequest extends LeadFields {
 
 /** Retorna a mensagem de erro do campo, ou null se o valor é válido. */
 type Validator = (value: string) => string | null;
+
+const includes = (options: readonly string[], value: string) => options.includes(value);
 
 export const fieldValidators = {
   nome: (v) => {
@@ -78,7 +101,20 @@ export const fieldValidators = {
   },
   uf: (v) => ((UFS as readonly string[]).includes(v) ? null : "Selecione."),
   agente: (v) => (v.trim().length >= 1 && v.length <= 60 ? null : "Selecione quem te atendeu."),
-} satisfies Record<Exclude<LeadField, "consentimento_lgpd">, Validator>;
+  perfil: (v) => (includes(PERFIS, v) ? null : "Selecione o perfil do contato."),
+  tem_precatorio: (v) => (includes(TEM_PRECATORIO, v) ? null : "Informe se a pessoa tem precatório."),
+  prioridade: (v) => (includes(PRIORIDADES, v) ? null : "Selecione a prioridade."),
+  observacoes: (v) => (v.trim().length <= OBSERVACOES_MAX ? null : `Máximo de ${OBSERVACOES_MAX} caracteres.`),
+} satisfies Record<Exclude<LeadField, "consentimento_lgpd" | "tipo_precatorio">, Validator>;
+
+/**
+ * Tipo de precatório só é perguntado (e só é aceito) quando a pessoa tem precatório;
+ * quem não tem não deve carregar um tipo solto no cadastro.
+ */
+export function validateTipoPrecatorio(tipo: string, tem: string): string | null {
+  if (tem !== "Tem") return tipo ? "Tipo de precatório não se aplica a quem não tem." : null;
+  return includes(TIPOS_PRECATORIO, tipo) ? null : "Selecione o tipo de precatório.";
+}
 
 export const CONSENT_ERROR = "É preciso autorizar o contato.";
 

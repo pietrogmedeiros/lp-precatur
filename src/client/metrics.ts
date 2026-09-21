@@ -1,4 +1,4 @@
-import type { AgentMetrics, MetricsLead, MetricsResponse } from "../shared/metrics.js";
+import type { AgentMetrics, Breakdown, MetricsLead, MetricsResponse } from "../shared/metrics.js";
 
 const TOKEN_KEY = "precatur_metrics_token";
 const REFRESH_MS = 30_000;
@@ -46,6 +46,10 @@ function statusBadge(ok: boolean, okText: string, waitText: string): HTMLElement
   return h("span", { class: `status ${ok ? "good" : "warn"}` }, svgIcon(ok ? ICON_OK : ICON_WAIT), ok ? okText : waitText);
 }
 
+/** "Média" -> "p-media": classe estável para cor de prioridade. */
+const priorityClass = (p: string) =>
+  `p-${p.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()}`;
+
 const TZ = "America/Sao_Paulo";
 const fmtDateTime = new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 const fmtTime = new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -80,6 +84,7 @@ function setToken(token: string): void {
 let token = getToken();
 let data: MetricsResponse | null = null;
 let selectedAgent = "";
+let selectedPriority = "";
 let query = "";
 let timer: number | undefined;
 
@@ -88,6 +93,7 @@ const dashView = $("#dash-view");
 const actions = $("#actions");
 const refreshBtn = $<HTMLButtonElement>("#refresh");
 const agentFilter = $<HTMLSelectElement>("#filter-agent");
+const priorityFilter = $<HTMLSelectElement>("#filter-priority");
 const searchInput = $<HTMLInputElement>("#filter-q");
 const tooltip = $("#tooltip");
 
@@ -145,6 +151,7 @@ function render(): void {
   $("#kpi-total").textContent = fmtInt.format(d.total);
   $("#kpi-hoje").textContent = fmtInt.format(d.hoje);
   $("#kpi-agentes").textContent = `${d.agentes.filter((a) => a.total > 0).length}/${d.agentes.length}`;
+  $("#kpi-alta").textContent = fmtInt.format(d.alta_prioridade);
   $("#kpi-n8n").replaceChildren(
     statusBadge(d.pendentes === 0, "Todos enviados", `${d.pendentes} pendente${d.pendentes > 1 ? "s" : ""}`),
   );
@@ -152,7 +159,11 @@ function render(): void {
   renderRanking(d.agentes, d.total);
   renderHours(d.horas_hoje);
   renderUfs(d.ufs, d.total);
+  renderBars("#prioridades", d.prioridades, d.total, true);
+  renderBars("#perfis", d.perfis, d.total, false);
+  renderBars("#precatorios", d.precatorios, d.total, false);
   syncAgentFilter(d.agentes);
+  syncPriorityFilter(d.prioridades);
   renderTable();
 }
 
@@ -237,6 +248,38 @@ function renderUfs(ufs: MetricsResponse["ufs"], total: number): void {
   );
 }
 
+/** Barras dos recortes por categoria. `colorir` pinta cada barra com a cor da prioridade. */
+function renderBars(selector: string, itens: Breakdown[], total: number, colorir: boolean): void {
+  const max = Math.max(1, ...itens.map((i) => i.total));
+  $(selector).replaceChildren(
+    ...itens.map((i) => {
+      const bar = h("span", colorir ? { class: priorityClass(i.rotulo) } : {});
+      bar.style.width = `${(i.total / max) * 100}%`;
+      const li = h(
+        "li",
+        { class: i.total ? "" : "zero" },
+        h("span", { class: "rotulo", title: i.rotulo }, i.rotulo),
+        h("span", { class: "valor" }, fmtInt.format(i.total)),
+        h("span", { class: "track" }, bar),
+      );
+      bindTooltip(li, () => `${i.rotulo}: ${i.total} lead${i.total === 1 ? "" : "s"} (${pct(i.total, total)})`);
+      return li;
+    }),
+  );
+}
+
+/** As opções vêm prontas do recorte: as três fixas, mais "Não informado" se houver lead antigo. */
+function syncPriorityFilter(prioridades: Breakdown[]): void {
+  const next = prioridades.map((p) => p.rotulo);
+  const current = [...priorityFilter.options].slice(1).map((o) => o.value).join("|");
+  if (current !== next.join("|")) {
+    priorityFilter.replaceChildren(new Option("Todas as prioridades", ""), ...next.map((p) => new Option(p, p)));
+  }
+  priorityFilter.value = selectedPriority;
+  // A opção escolhida pode ter sumido entre atualizações: não deixa um filtro invisível travando a tabela.
+  if (priorityFilter.value !== selectedPriority) selectedPriority = "";
+}
+
 function syncAgentFilter(agentes: AgentMetrics[]): void {
   const current = [...agentFilter.options].slice(1).map((o) => o.value).join("|");
   const next = agentes.map((a) => a.agente).sort((a, b) => a.localeCompare(b));
@@ -254,14 +297,16 @@ function renderTable(): void {
   const qDigits = query.replace(/\D/g, "");
   const leads = data.leads.filter((l) => {
     if (selectedAgent && l.agente !== selectedAgent) return false;
+    if (selectedPriority && (l.prioridade ?? "Não informado") !== selectedPriority) return false;
     if (!q) return true;
-    if (normalize(`${l.nome} ${l.cidade} ${l.uf}`).includes(q)) return true;
+    if (normalize(`${l.nome} ${l.cidade} ${l.uf} ${l.perfil ?? ""} ${l.observacoes ?? ""}`).includes(q)) return true;
     return qDigits.length >= 3 && l.telefone.replace(/\D/g, "").includes(qDigits);
   });
 
-  $("#table-title").textContent = selectedAgent
-    ? `Leads de ${selectedAgent} (${leads.length})`
-    : `Leads (${leads.length})`;
+  const escopo = [selectedAgent && `de ${selectedAgent}`, selectedPriority && `· prioridade ${selectedPriority}`]
+    .filter(Boolean)
+    .join(" ");
+  $("#table-title").textContent = `Leads ${escopo} (${leads.length})`.replace(/\s+/g, " ");
   $("#empty").hidden = leads.length > 0;
   $("#rows").replaceChildren(...leads.map(row));
 }
@@ -271,14 +316,26 @@ function row(l: MetricsLead): HTMLTableRowElement {
   const wa = h("a", { href: `https://wa.me/55${digits}`, target: "_blank", rel: "noopener", title: "Abrir no WhatsApp" }, l.telefone);
   const badge = statusBadge(l.enviado, "Enviado", "Pendente");
   if (!l.enviado && l.ultimo_erro) badge.title = `${l.tentativas} tentativa(s): ${l.ultimo_erro}`;
+  const nome = h("td", { class: "name" }, l.nome);
+  // Observação completa fica no title; a célula mostra só a primeira linha.
+  if (l.observacoes) nome.append(h("span", { class: "obs", title: l.observacoes }, l.observacoes));
+
+  const precatorio = l.tem_precatorio === "Não tem" ? "Não tem" : l.tipo_precatorio ?? "—";
+  const prioridade = l.prioridade
+    ? h("span", { class: `tag ${priorityClass(l.prioridade)}` }, l.prioridade)
+    : "—";
+
   return h(
     "tr",
     {},
     h("td", { class: "when" }, fmtDateTime.format(new Date(l.recebido_em))),
-    h("td", { class: "name" }, l.nome),
+    nome,
     h("td", {}, wa),
     h("td", {}, `${l.cidade}/${l.uf}`),
     h("td", {}, l.agente),
+    h("td", { class: l.perfil ? "" : "muted-cell" }, l.perfil ?? "—"),
+    h("td", { class: precatorio === "—" ? "muted-cell" : "" }, precatorio),
+    h("td", {}, prioridade),
     h("td", {}, badge),
   );
 }
@@ -315,6 +372,11 @@ refreshBtn.addEventListener("click", () => void load());
 agentFilter.addEventListener("change", () => {
   selectedAgent = agentFilter.value;
   render();
+});
+
+priorityFilter.addEventListener("change", () => {
+  selectedPriority = priorityFilter.value;
+  renderTable();
 });
 
 searchInput.addEventListener("input", () => {

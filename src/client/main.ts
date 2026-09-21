@@ -1,8 +1,13 @@
 import {
   UFS,
   CONSENT_ERROR,
+  PERFIS,
+  PRIORIDADES,
+  TEM_PRECATORIO,
+  TIPOS_PRECATORIO,
   fieldValidators,
   formatPhone,
+  validateTipoPrecatorio,
   type LeadField,
   type LeadRequest,
   type LeadResponse,
@@ -101,12 +106,32 @@ const consent = $<HTMLInputElement>("#consent");
 const consentWrap = $("#consent-wrap");
 const ufSelect = $<HTMLSelectElement>("#uf");
 const agentSelect = $<HTMLSelectElement>("#agente");
+const perfilSelect = $<HTMLSelectElement>("#perfil");
 const phoneInput = $<HTMLInputElement>("#telefone");
 const cityList = $<HTMLDataListElement>("#cidades-list");
+const tipoField = $("[data-field='tipo_precatorio']");
 
 $("#event-name").textContent = config.evento || "Estamos no evento";
 UFS.forEach((uf) => ufSelect.add(new Option(uf, uf)));
 config.agentes.forEach((a) => agentSelect.add(new Option(a, a)));
+PERFIS.forEach((p) => perfilSelect.add(new Option(p, p)));
+
+/** Monta um grupo de radios como botões: <input> escondido + <label> clicável. */
+function buildChoices(containerId: string, name: string, options: readonly string[]): void {
+  const container = $(containerId);
+  container.replaceChildren(
+    ...options.flatMap((value, i) => {
+      const id = `${name}-${i}`;
+      const input = Object.assign(document.createElement("input"), { type: "radio", name, value, id });
+      const label = Object.assign(document.createElement("label"), { htmlFor: id, textContent: value });
+      return [input, label];
+    }),
+  );
+}
+
+buildChoices("#tem-precatorio-choices", "tem_precatorio", TEM_PRECATORIO);
+buildChoices("#tipo-precatorio-choices", "tipo_precatorio", TIPOS_PRECATORIO);
+buildChoices("#prioridade-choices", "prioridade", PRIORIDADES);
 
 /* ---------- Máscara de telefone: (DD) 99999-9999 ---------- */
 const countDigits = (s: string) => s.replace(/\D/g, "").length;
@@ -162,11 +187,25 @@ ufSelect.addEventListener("change", async () => {
 });
 
 /* ---------- Validação ---------- */
-const TEXT_FIELDS = ["nome", "telefone", "cidade", "uf", "agente"] as const satisfies readonly LeadField[];
-type TextField = (typeof TEXT_FIELDS)[number];
+const FORM_FIELDS = [
+  "nome", "telefone", "cidade", "uf", "agente",
+  "perfil", "tem_precatorio", "tipo_precatorio", "prioridade", "observacoes",
+] as const satisfies readonly LeadField[];
+type FormField = (typeof FORM_FIELDS)[number];
 
-function fieldEl(name: TextField): HTMLInputElement | HTMLSelectElement {
-  return form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement;
+/** Valor atual do campo. Em grupos de radio, RadioNodeList.value é a opção marcada (ou ""). */
+function value(name: FormField): string {
+  const el = form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | RadioNodeList | null;
+  return el?.value ?? "";
+}
+
+function wrapOf(name: FormField): HTMLElement | null {
+  return form.querySelector<HTMLElement>(`[data-field="${name}"]`);
+}
+
+/** Primeiro controle do campo, para levar o foco quando a validação falha. */
+function focusTarget(name: FormField): HTMLElement | null {
+  return wrapOf(name)?.querySelector<HTMLElement>("input, select, textarea") ?? null;
 }
 
 function setError(name: LeadField, message: string | null): void {
@@ -181,27 +220,49 @@ function setError(name: LeadField, message: string | null): void {
   if (err && message) err.textContent = message;
 }
 
-function checkField(name: TextField): boolean {
-  const value = fieldEl(name).value;
-  let message = fieldValidators[name](value);
-  if (!message && name === "agente" && !config.agentes.includes(value)) message = "Selecione quem te atendeu.";
+function checkField(name: FormField): boolean {
+  const v = value(name);
+  let message =
+    name === "tipo_precatorio"
+      ? validateTipoPrecatorio(v, value("tem_precatorio"))
+      : fieldValidators[name](v);
+  if (!message && name === "agente" && !config.agentes.includes(v)) message = "Selecione quem te atendeu.";
   setError(name, message);
   return message === null;
 }
 
-for (const name of TEXT_FIELDS) {
-  const el = fieldEl(name);
-  el.addEventListener(el instanceof HTMLSelectElement ? "change" : "blur", () => checkField(name));
-  el.addEventListener("input", () => {
-    if (el.closest(".field")?.classList.contains("has-error")) checkField(name);
-  });
+/** Tipo de precatório só aparece para quem tem; ao esconder, limpa a resposta anterior. */
+function syncTipoPrecatorio(): void {
+  const tem = value("tem_precatorio") === "Tem";
+  tipoField.hidden = !tem;
+  if (tem) return;
+  for (const radio of form.querySelectorAll<HTMLInputElement>('input[name="tipo_precatorio"]')) {
+    radio.checked = false;
+  }
+  setError("tipo_precatorio", null);
 }
+
+for (const name of FORM_FIELDS) {
+  const wrap = wrapOf(name);
+  if (!wrap) continue;
+  for (const el of wrap.querySelectorAll<HTMLElement>("input, select, textarea")) {
+    // Radio e select reagem ao "change"; texto só ao sair do campo, para não acusar erro enquanto digita.
+    const isChoice = el instanceof HTMLSelectElement || (el instanceof HTMLInputElement && el.type === "radio");
+    el.addEventListener(isChoice ? "change" : "blur", () => checkField(name));
+    el.addEventListener("input", () => {
+      if (wrap.classList.contains("has-error")) checkField(name);
+    });
+  }
+}
+form.addEventListener("change", (e) => {
+  if ((e.target as HTMLInputElement).name === "tem_precatorio") syncTipoPrecatorio();
+});
 consent.addEventListener("change", () => setError("consentimento_lgpd", consent.checked ? null : CONSENT_ERROR));
 
 function validateAll(): boolean {
   let first: HTMLElement | null = null;
-  for (const name of TEXT_FIELDS) {
-    if (!checkField(name) && !first) first = fieldEl(name);
+  for (const name of FORM_FIELDS) {
+    if (!checkField(name) && !first) first = focusTarget(name);
   }
   setError("consentimento_lgpd", consent.checked ? null : CONSENT_ERROR);
   if (!consent.checked && !first) first = consent;
@@ -236,7 +297,8 @@ form.addEventListener("submit", async (e) => {
   showAlert(null);
   if (!validateAll()) return;
 
-  const value = (name: TextField) => fieldEl(name).value;
+  const temPrecatorio = value("tem_precatorio") as LeadRequest["tem_precatorio"];
+  const observacoes = value("observacoes").trim();
   const lead: LeadRequest = {
     id: uuid(),
     nome: value("nome").trim(),
@@ -244,6 +306,12 @@ form.addEventListener("submit", async (e) => {
     cidade: value("cidade").trim(),
     uf: value("uf") as LeadRequest["uf"],
     agente: value("agente"),
+    perfil: value("perfil") as LeadRequest["perfil"],
+    tem_precatorio: temPrecatorio,
+    // Só vai o que se aplica: sem precatório não há tipo, e observação vazia não vira "".
+    ...(temPrecatorio === "Tem" ? { tipo_precatorio: value("tipo_precatorio") as LeadRequest["tipo_precatorio"] } : {}),
+    prioridade: value("prioridade") as LeadRequest["prioridade"],
+    ...(observacoes ? { observacoes } : {}),
     consentimento_lgpd: true,
     criado_em: new Date().toISOString(),
     website: (form.elements.namedItem("website") as HTMLInputElement).value,
@@ -276,9 +344,10 @@ function resetForm(): void {
   form.querySelectorAll(".has-error").forEach((el) => el.classList.remove("has-error"));
   consentWrap.classList.remove("has-error");
   showAlert(null);
+  syncTipoPrecatorio();
   $("#countdown").textContent = "";
   card.classList.remove("done");
-  fieldEl("nome").focus();
+  focusTarget("nome")?.focus();
 }
 
 function startAutoReset(): void {

@@ -56,6 +56,7 @@
       <div class="card kpi"><p class="kpi-label">Leads no total</p><p class="kpi-value" id="kpi-total">0</p></div>
       <div class="card kpi"><p class="kpi-label">Leads hoje</p><p class="kpi-value" id="kpi-hoje">0</p></div>
       <div class="card kpi"><p class="kpi-label">Agentes com leads</p><p class="kpi-value" id="kpi-agentes">0</p></div>
+      <div class="card kpi"><p class="kpi-label">Alta prioridade</p><p class="kpi-value alta" id="kpi-alta">0</p></div>
       <div class="card kpi"><p class="kpi-label">Envio ao n8n</p><p class="kpi-status" id="kpi-n8n"></p></div>
     </section>
 
@@ -83,6 +84,21 @@
       </div>
     </section>
 
+    <section class="grid-3">
+      <div class="card">
+        <div class="card-head"><h2>Por prioridade</h2></div>
+        <ol class="bars" id="prioridades"></ol>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Por perfil do contato</h2></div>
+        <ol class="bars" id="perfis"></ol>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Por precatório</h2></div>
+        <ol class="bars" id="precatorios"></ol>
+      </div>
+    </section>
+
     <section class="card">
       <div class="card-head table-head">
         <h2 id="table-title">Leads</h2>
@@ -90,7 +106,10 @@
           <select id="filter-agent" aria-label="Filtrar por agente">
             <option value="">Todos os agentes</option>
           </select>
-          <input type="search" id="filter-q" placeholder="Buscar nome, telefone, cidade…" aria-label="Buscar">
+          <select id="filter-priority" aria-label="Filtrar por prioridade">
+            <option value="">Todas as prioridades</option>
+          </select>
+          <input type="search" id="filter-q" placeholder="Buscar nome, telefone, cidade, observação…" aria-label="Buscar">
         </div>
       </div>
       <div class="table-wrap">
@@ -102,6 +121,9 @@
               <th>Telefone</th>
               <th>Cidade/UF</th>
               <th>Agente</th>
+              <th>Perfil</th>
+              <th>Precatório</th>
+              <th>Prioridade</th>
               <th>n8n</th>
             </tr>
           </thead>

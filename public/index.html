@@ -112,6 +112,43 @@
                   <p class="err">Selecione quem te atendeu.</p>
                 </div>
 
+                <div class="field" data-field="perfil">
+                  <label class="lbl" for="perfil">Perfil do contato <span class="req">*</span></label>
+                  <div class="control">
+                    <select id="perfil" name="perfil" required>
+                      <option value="" disabled selected>Selecione o perfil</option>
+                    </select>
+                  </div>
+                  <p class="err">Selecione o perfil do contato.</p>
+                </div>
+
+                <fieldset class="field" data-field="tem_precatorio">
+                  <legend class="lbl">Tem precatório? <span class="req">*</span></legend>
+                  <div class="choices" id="tem-precatorio-choices"></div>
+                  <p class="err">Informe se a pessoa tem precatório.</p>
+                </fieldset>
+
+                <fieldset class="field" data-field="tipo_precatorio" hidden>
+                  <legend class="lbl">Tipo de precatório <span class="req">*</span></legend>
+                  <div class="choices" id="tipo-precatorio-choices"></div>
+                  <p class="err">Selecione o tipo de precatório.</p>
+                </fieldset>
+
+                <fieldset class="field" data-field="prioridade">
+                  <legend class="lbl">Prioridade <span class="req">*</span></legend>
+                  <div class="choices" id="prioridade-choices"></div>
+                  <p class="err">Selecione a prioridade.</p>
+                </fieldset>
+
+                <div class="field" data-field="observacoes">
+                  <label class="lbl" for="observacoes">Observações <span class="opt">(opcional)</span></label>
+                  <div class="control">
+                    <textarea id="observacoes" name="observacoes" rows="3" maxlength="1000"
+                      placeholder="Valor estimado, tribunal, prazo, contexto da conversa..."></textarea>
+                  </div>
+                  <p class="err">Máximo de 1000 caracteres.</p>
+                </div>
+
                 <!-- Honeypot anti-bot: invisível para pessoas -->
                 <div class="hp" aria-hidden="true">
                   <label for="website">Não preencha</label>

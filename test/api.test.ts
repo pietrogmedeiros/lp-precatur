@@ -46,6 +46,11 @@ const lead = () => ({
   cidade: "Vitória",
   uf: "ES",
   agente: "Calebe",
+  perfil: "Advogado",
+  tem_precatorio: "Tem",
+  tipo_precatorio: "Municipal",
+  prioridade: "Alta",
+  observacoes: "Precatório do TJ-ES, cliente com pressa.",
   consentimento_lgpd: true,
   criado_em: new Date().toISOString(),
   website: "",
@@ -112,6 +117,9 @@ describe("API de leads", () => {
     const sent = webhook.received[0] as Record<string, unknown>;
     assert.equal(sent.nome, "Maria da Silva");
     assert.equal(sent.agente, "Calebe");
+    assert.equal(sent.perfil, "Advogado");
+    assert.equal(sent.tipo_precatorio, "Municipal");
+    assert.equal(sent.prioridade, "Alta");
     assert.equal(sent.evento, "Evento Teste");
     assert.equal(sent.website, undefined);
     assert.equal(store.get(l.id)?.enviado, true);
@@ -183,7 +191,7 @@ describe("API de leads", () => {
       leads: { agente: string; nome: string }[];
     };
     assert.equal(m.total, store.all().length);
-    assert.equal(m.agentes.length, 5, "agentes sem leads também aparecem");
+    assert.equal(m.agentes.length, 16, "agentes sem leads também aparecem");
     assert.equal(m.agentes[0]?.agente, "Calebe");
     assert.equal(m.agentes[0]?.total, m.total);
     assert.equal(m.leads[0]?.nome, "Maria da Silva");
@@ -199,6 +207,7 @@ describe("API de leads", () => {
     assert.equal(res.status, 200);
     const csv = await res.text();
     assert.match(csv, /recebido_em;nome;telefone/);
+    assert.match(csv, /perfil;tem_precatorio;tipo_precatorio;prioridade;observacoes/);
     assert.match(csv, /Maria da Silva/);
   });
 });
