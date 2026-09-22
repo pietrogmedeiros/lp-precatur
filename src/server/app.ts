@@ -104,7 +104,8 @@ export function createApp({ config, store, delivery }: Deps) {
     res.setHeader("Cache-Control", "no-cache");
     res.type("html").send(indexHtml);
   };
-  app.get(["/", "/index.html"], sendIndex);
+  // /palestra-rafael é uma cópia idêntica da LP (mesmo formulário, evento e agentes).
+  app.get(["/", "/index.html", "/palestra-rafael"], sendIndex);
 
   const metricsHtml = readFileSync(path.join(config.publicDir, "metrics.html"), "utf8");
   app.get("/metrics", (_req, res) => {

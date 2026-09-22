@@ -109,6 +109,12 @@ describe("API de leads", () => {
     assert.ok(res.headers.get("content-security-policy"));
   });
 
+  it("serve a mesma página em /palestra-rafael", async () => {
+    const [raiz, copia] = await Promise.all([fetch(baseUrl), fetch(`${baseUrl}/palestra-rafael`)]);
+    assert.equal(copia.status, 200);
+    assert.equal(await copia.text(), await raiz.text());
+  });
+
   it("salva e encaminha o lead ao n8n", async () => {
     const l = lead();
     const res = await post(l);
