@@ -50,7 +50,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     adminToken: env.ADMIN_TOKEN ?? "",
     metricsToken: env.METRICS_TOKEN ?? "",
     rateLimitPerMinute: int(env.RATE_LIMIT_PER_MINUTE, 60),
-    evento: env.EVENT_NAME ?? "Evento de Captação em SP",
+    evento: env.EVENT_NAME ?? "Precatório Summit",
     agentes: list(env.AGENTS, ["Thales", "Aline", "Thaynara", "Tati", "Henrique", "Rhuan", "Calebe", "Karol", "Vitoria", "Matheus", "Sanmilly", "Ayrton", "Laís", "Carlos", "Chris", "Rafael"]),
     autoResetSegundos: int(env.AUTO_RESET_SECONDS, 15),
   };

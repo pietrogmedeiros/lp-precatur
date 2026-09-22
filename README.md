@@ -32,7 +32,7 @@ Navegador ──POST /api/leads──▶ Servidor Node ──POST JSON──▶ 
   "cidade": "Vitória",
   "uf": "ES",
   "agente": "Henrique",
-  "evento": "Evento de Captação em SP",
+  "evento": "Precatório Summit",
   "consentimento_lgpd": true,
   "criado_em": "2026-09-18T21:45:11.733Z",
   "recebido_em": "2026-09-18T21:45:11.745Z"
@@ -70,8 +70,8 @@ docker run -p 3000:3000 --env-file .env -v $(pwd)/data:/app/data lp-precatur
 3. **Ambiente:**
    ```
    N8N_WEBHOOK_URL=https://SEU-N8N/webhook/evento
-   EVENT_NAME=Evento de Captação em SP
-   AGENTS=Thales,Calebe,Henrique,Rhuan,Bernardo
+   EVENT_NAME=Precatório Summit
+   AGENTS=Thales,Aline,Thaynara,Tati,Henrique,Rhuan,Calebe,Karol,Vitoria,Matheus,Sanmilly,Ayrton,Laís,Carlos,Chris,Rafael
    ADMIN_TOKEN=um-token-longo-e-secreto
    TRUST_PROXY=true
    ```
@@ -83,8 +83,8 @@ docker run -p 3000:3000 --env-file .env -v $(pwd)/data:/app/data lp-precatur
 | Variável | Padrão | Descrição |
 |---|---|---|
 | `N8N_WEBHOOK_URL` | (vazio) | Webhook que recebe os leads. Vazio: os leads ficam só em `data/leads.jsonl` |
-| `EVENT_NAME` | `Evento de Captação em SP` | Nome do evento (selo no topo e campo `evento`) |
-| `AGENTS` | `Thales,Calebe,Henrique,Rhuan,Bernardo` | Agentes da lista, separados por vírgula |
+| `EVENT_NAME` | `Precatório Summit` | Nome do evento (selo no topo e campo `evento`) |
+| `AGENTS` | `Thales,Aline,Thaynara,Tati,Henrique,Rhuan,Calebe,Karol,Vitoria,Matheus,Sanmilly,Ayrton,Laís,Carlos,Chris,Rafael` | Agentes da lista, separados por vírgula |
 | `AUTO_RESET_SECONDS` | `15` | Volta ao formulário após o sucesso (`0` desativa) |
 | `ADMIN_TOKEN` | (vazio) | Libera o CSV em `/admin/leads.csv?token=...` |
 | `METRICS_TOKEN` | (vazio) | Vazio: `/metrics` aberto. Preenchido: o painel pede esse token |
