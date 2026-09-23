@@ -115,6 +115,8 @@ function origemFrom(req: Request): Origem | undefined {
 
 export function createApp({ config, store, delivery, dataVolume = null }: Deps) {
   const app = express();
+  // Muda a cada deploy/reinício: permite conferir de fora que o processo novo subiu.
+  const iniciadoEm = new Date().toISOString();
   app.disable("x-powered-by");
   app.set("trust proxy", config.trustProxy);
   app.use(securityHeaders);
@@ -149,7 +151,7 @@ export function createApp({ config, store, delivery, dataVolume = null }: Deps) 
   app.use(express.static(config.publicDir, { index: false, maxAge: "1h" }));
 
   app.get("/api/health", (_req, res) => {
-    res.json({ ok: true, leads: store.all().length, pendentes: store.pending().length, volume: dataVolume });
+    res.json({ ok: true, leads: store.all().length, pendentes: store.pending().length, volume: dataVolume, iniciado_em: iniciadoEm });
   });
 
   app.post(
