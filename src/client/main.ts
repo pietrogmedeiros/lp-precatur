@@ -1,6 +1,8 @@
 import {
   UFS,
+  CAMPOS_QUALIFICACAO,
   CONSENT_ERROR,
+  PEDE_QUALIFICACAO,
   ORIGEM_PADRAO,
   PERFIS,
   PRIORIDADES,
@@ -194,6 +196,12 @@ const FORM_FIELDS = [
 ] as const satisfies readonly LeadField[];
 type FormField = (typeof FORM_FIELDS)[number];
 
+/** A palestra não tem agente: agente, precatório e prioridade ficam de fora do formulário. */
+const pedeQualificacao = PEDE_QUALIFICACAO[config.origem];
+const camposAtivos = FORM_FIELDS.filter(
+  (name) => pedeQualificacao || !(CAMPOS_QUALIFICACAO as readonly string[]).includes(name),
+);
+
 /** Valor atual do campo. Em grupos de radio, RadioNodeList.value é a opção marcada (ou ""). */
 function value(name: FormField): string {
   const el = form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | RadioNodeList | null;
@@ -262,7 +270,7 @@ consent.addEventListener("change", () => setError("consentimento_lgpd", consent.
 
 function validateAll(): boolean {
   let first: HTMLElement | null = null;
-  for (const name of FORM_FIELDS) {
+  for (const name of camposAtivos) {
     if (!checkField(name) && !first) first = focusTarget(name);
   }
   setError("consentimento_lgpd", consent.checked ? null : CONSENT_ERROR);
@@ -306,12 +314,17 @@ form.addEventListener("submit", async (e) => {
     telefone: value("telefone").trim(),
     cidade: value("cidade").trim(),
     uf: value("uf") as LeadRequest["uf"],
-    agente: value("agente"),
     perfil: value("perfil") as LeadRequest["perfil"],
-    tem_precatorio: temPrecatorio,
-    // Só vai o que se aplica: sem precatório não há tipo, e observação vazia não vira "".
-    ...(temPrecatorio === "Tem" ? { tipo_precatorio: value("tipo_precatorio") as LeadRequest["tipo_precatorio"] } : {}),
-    prioridade: value("prioridade") as LeadRequest["prioridade"],
+    // Só vai o que se aplica: sem qualificação não há agente, sem precatório não há tipo,
+    // e observação vazia não vira "".
+    ...(pedeQualificacao
+      ? {
+          agente: value("agente"),
+          tem_precatorio: temPrecatorio,
+          ...(temPrecatorio === "Tem" ? { tipo_precatorio: value("tipo_precatorio") as LeadRequest["tipo_precatorio"] } : {}),
+          prioridade: value("prioridade") as LeadRequest["prioridade"],
+        }
+      : {}),
     ...(observacoes ? { observacoes } : {}),
     consentimento_lgpd: true,
     criado_em: new Date().toISOString(),

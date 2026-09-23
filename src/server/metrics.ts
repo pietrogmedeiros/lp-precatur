@@ -71,12 +71,15 @@ export function buildMetrics(
 
   for (const lead of leads) {
     const isToday = dayOf(lead.recebido_em) === today;
-    const a = byAgent.get(lead.agente) ?? { agente: lead.agente, total: 0, hoje: 0, pendentes: 0 };
-    a.total += 1;
-    if (isToday) a.hoje += 1;
-    if (!lead.enviado) a.pendentes += 1;
-    if (!a.ultimo || lead.recebido_em > a.ultimo) a.ultimo = lead.recebido_em;
-    byAgent.set(lead.agente, a);
+    // Leads da palestra não têm agente: entram nos totais, mas não no ranking.
+    if (lead.agente) {
+      const a = byAgent.get(lead.agente) ?? { agente: lead.agente, total: 0, hoje: 0, pendentes: 0 };
+      a.total += 1;
+      if (isToday) a.hoje += 1;
+      if (!lead.enviado) a.pendentes += 1;
+      if (!a.ultimo || lead.recebido_em > a.ultimo) a.ultimo = lead.recebido_em;
+      byAgent.set(lead.agente, a);
+    }
 
     byUf.set(lead.uf, (byUf.get(lead.uf) ?? 0) + 1);
     if (isToday) {
@@ -93,7 +96,7 @@ export function buildMetrics(
       telefone: l.telefone,
       cidade: l.cidade,
       uf: l.uf,
-      agente: l.agente,
+      ...(l.agente ? { agente: l.agente } : {}),
       ...(l.perfil ? { perfil: l.perfil } : {}),
       ...(l.tem_precatorio ? { tem_precatorio: l.tem_precatorio } : {}),
       ...(l.tipo_precatorio ? { tipo_precatorio: l.tipo_precatorio } : {}),

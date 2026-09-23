@@ -115,13 +115,17 @@ describe("API de leads", () => {
     assert.ok(res.headers.get("content-security-policy"));
   });
 
-  it("serve a mesma página em /palestra-rafael, só com outra origem", async () => {
+  it("serve a mesma página em /palestra-rafael, com outra origem e sem qualificação", async () => {
     const [raiz, copia] = await Promise.all([fetch(baseUrl), fetch(`${baseUrl}/palestra-rafael`)]);
     assert.equal(copia.status, 200);
     const [htmlRaiz, htmlCopia] = await Promise.all([raiz.text(), copia.text()]);
     assert.match(htmlRaiz, /"origem":"lp"/);
     assert.match(htmlCopia, /"origem":"palestra-rafael"/);
-    assert.equal(htmlCopia.replace("palestra-rafael", "lp"), htmlRaiz);
+    assert.doesNotMatch(htmlRaiz, /sem-qualificacao/);
+    assert.equal(
+      htmlCopia.replace("palestra-rafael", "lp").replace('<body class="sem-qualificacao">', "<body>"),
+      htmlRaiz,
+    );
   });
 
   it("salva e encaminha o lead ao n8n", async () => {
@@ -228,12 +232,30 @@ describe("API de leads", () => {
     assert.match(csv, /Maria da Silva/);
   });
 
+  it("a LP principal continua exigindo agente, precatório e prioridade", async () => {
+    const { agente: _a, tem_precatorio: _t, tipo_precatorio: _tp, prioridade: _p, ...semQualificacao } = lead();
+    const res = await post(semQualificacao);
+    assert.equal(res.status, 400);
+    const body = (await res.json()) as { erros: Record<string, string> };
+    assert.deepEqual(Object.keys(body.erros).sort(), ["agente", "prioridade", "tem_precatorio"]);
+  });
+
   it("envia os leads da palestra ao webhook próprio e separa no painel", async () => {
-    const l = { ...lead(), origem: "palestra-rafael" };
+    // A palestra só pede nome, telefone, cidade, UF, perfil e observações.
+    const { agente: _a, tem_precatorio: _t, tipo_precatorio: _tp, prioridade: _p, ...base } = lead();
+    const l = { ...base, origem: "palestra-rafael" };
     assert.equal((await post(l)).status, 201);
     assert.equal(webhook.paths[0], "/webhook/palestra-rafael");
     assert.equal((webhook.received[0] as Record<string, unknown>).origem, "palestra-rafael");
     assert.equal(store.get(l.id)?.origem, "palestra-rafael");
+    assert.equal(store.get(l.id)?.perfil, "Advogado");
+    assert.equal(store.get(l.id)?.agente, undefined);
+
+    // Qualificação enviada por engano pela palestra é descartada.
+    const extra = { ...lead(), agente: "Qualquer", origem: "palestra-rafael" };
+    assert.equal((await post(extra)).status, 201);
+    assert.equal(store.get(extra.id)?.agente, undefined);
+    assert.equal(store.get(extra.id)?.prioridade, undefined);
 
     const todas = (await (await fetch(`${baseUrl}/api/metrics`)).json()) as {
       total: number;
@@ -246,13 +268,13 @@ describe("API de leads", () => {
       leads: { id: string; origem: string }[];
     };
     assert.equal(palestra.origem, "palestra-rafael");
-    assert.equal(palestra.total, 1);
-    assert.deepEqual(palestra.leads.map((x) => [x.id, x.origem]), [[l.id, "palestra-rafael"]]);
+    assert.equal(palestra.total, 2);
+    assert.deepEqual(palestra.leads.map((x) => x.origem), ["palestra-rafael", "palestra-rafael"]);
     assert.deepEqual(palestra.origens, todas.origens, "o resumo por página ignora o filtro");
-    assert.deepEqual(todas.origens.map((o) => o.total), [todas.total - 1, 1]);
+    assert.deepEqual(todas.origens.map((o) => o.total), [todas.total - 2, 2]);
 
     const csv = await (await fetch(`${baseUrl}/metrics/leads.csv?origem=palestra-rafael`)).text();
-    assert.equal(csv.trim().split("\r\n").length, 2);
+    assert.equal(csv.trim().split("\r\n").length, 3);
     assert.match(csv, /"palestra-rafael"/);
   });
 });

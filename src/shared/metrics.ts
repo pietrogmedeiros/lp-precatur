@@ -15,8 +15,8 @@ export interface MetricsLead {
   telefone: string;
   cidade: string;
   uf: UF;
-  agente: string;
-  /** Leads captados antes destes campos existirem não os têm. */
+  /** Leads captados antes destes campos existirem, ou pela palestra, não os têm. */
+  agente?: string;
   perfil?: Perfil;
   tem_precatorio?: TemPrecatorio;
   tipo_precatorio?: TipoPrecatorio;

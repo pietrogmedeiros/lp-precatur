@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { timingSafeEqual } from "node:crypto";
 import express, { type NextFunction, type Request, type Response } from "express";
-import { ORIGENS, ORIGEM_PADRAO, type LeadField, type LeadResponse, type Origem, type PublicConfig } from "../shared/lead.js";
+import { CAMPOS_QUALIFICACAO, ORIGENS, ORIGEM_PADRAO, PEDE_QUALIFICACAO, type LeadField, type LeadResponse, type Origem, type PublicConfig } from "../shared/lead.js";
 import { buildMetrics } from "./metrics.js";
 import { leadRequestSchema } from "./schema.js";
 import type { AppConfig } from "./config.js";
@@ -114,10 +114,10 @@ export function createApp({ config, store, delivery }: Deps) {
       autoResetSegundos: config.autoResetSegundos,
     };
     const configJson = JSON.stringify(publicConfig).replace(/</g, "\\u003c");
-    const html = indexTemplate.replace(
-      "<!--APP_CONFIG-->",
-      `<script id="app-config" type="application/json">${configJson}</script>`,
-    );
+    // A classe esconde os campos de qualificação já no primeiro paint (sem esperar o JS).
+    const html = indexTemplate
+      .replace("<body>", PEDE_QUALIFICACAO[origem] ? "<body>" : '<body class="sem-qualificacao">')
+      .replace("<!--APP_CONFIG-->", `<script id="app-config" type="application/json">${configJson}</script>`);
     app.get(PAGINAS[origem], (_req, res) => {
       res.setHeader("Cache-Control", "no-cache");
       res.type("html").send(html);
@@ -153,6 +153,7 @@ export function createApp({ config, store, delivery }: Deps) {
       }
 
       const { website, ...data } = parsed.data;
+      if (!PEDE_QUALIFICACAO[data.origem]) for (const campo of CAMPOS_QUALIFICACAO) delete data[campo];
 
       // Bot caiu no honeypot: finge sucesso e descarta.
       if (website) {
@@ -160,7 +161,7 @@ export function createApp({ config, store, delivery }: Deps) {
         return;
       }
 
-      if (!config.agentes.includes(data.agente)) {
+      if (data.agente !== undefined && !config.agentes.includes(data.agente)) {
         res.status(400).json({ ok: false, erros: { agente: "Selecione quem te atendeu." } });
         return;
       }

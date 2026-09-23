@@ -101,7 +101,7 @@ docker run -p 3000:3000 --env-file .env -v $(pwd)/data:/app/data lp-precatur
 | Método | Rota | Descrição |
 |---|---|---|
 | `GET` | `/` | Landing page |
-| `GET` | `/palestra-rafael` | A mesma landing page; os leads vão para `N8N_WEBHOOK_URL_PALESTRA_RAFAEL` |
+| `GET` | `/palestra-rafael` | A mesma landing page, sem agente, precatório e prioridade; os leads vão para `N8N_WEBHOOK_URL_PALESTRA_RAFAEL` |
 | `POST` | `/api/leads` | Recebe um lead (201 criado, 200 duplicado, 400 com erros por campo) |
 | `GET` | `/metrics` | Painel: leads por página, por agente, por hora e por UF, e a lista de leads com filtro por agente |
 | `GET` | `/api/metrics` | Dados do painel em JSON (`?origem=lp` ou `?origem=palestra-rafael` filtra por página) |

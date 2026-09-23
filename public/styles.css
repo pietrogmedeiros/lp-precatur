@@ -193,6 +193,8 @@ header.top img { height: 40px; width: auto; }
 .form-body .sub { color: var(--muted); font-size: 16px; margin-bottom: 26px; }
 
 .field { margin-bottom: 18px; }
+/* Páginas sem agente (palestra): o servidor marca o <body> e os campos de qualificação somem. */
+.sem-qualificacao [data-qualificacao] { display: none; }
 .row { display: grid; grid-template-columns: 1fr 110px; gap: 12px; }
 label.lbl {
   display: block;

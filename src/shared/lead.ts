@@ -35,6 +35,10 @@ export const ORIGEM_ROTULOS: Record<Origem, string> = {
   "palestra-rafael": "Palestra Rafael",
 };
 
+/** Qualificação feita pelo agente no estande; a palestra não tem agente, então não pergunta. */
+export const CAMPOS_QUALIFICACAO = ["agente", "tem_precatorio", "tipo_precatorio", "prioridade"] as const;
+export const PEDE_QUALIFICACAO: Record<Origem, boolean> = { lp: true, "palestra-rafael": false };
+
 /**
  * Dígitos do telefone sem código do país (+55) nem zero de operadora/DDD (027...).
  * Ex.: "+55 (27) 99658-4654" -> "27996584654".
@@ -70,12 +74,13 @@ export interface LeadFields {
   telefone: string;
   cidade: string;
   uf: UF;
-  agente: string;
+  /** Agente, precatório e prioridade só existem nas páginas que pedem qualificação (PEDE_QUALIFICACAO). */
+  agente?: string;
   perfil: Perfil;
-  tem_precatorio: TemPrecatorio;
+  tem_precatorio?: TemPrecatorio;
   /** Só existe quando tem_precatorio é "Tem". */
   tipo_precatorio?: TipoPrecatorio;
-  prioridade: Prioridade;
+  prioridade?: Prioridade;
   observacoes?: string;
   consentimento_lgpd: true;
 }

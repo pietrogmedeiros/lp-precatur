@@ -365,7 +365,7 @@ function row(l: MetricsLead): HTMLTableRowElement {
     nome,
     h("td", {}, wa),
     h("td", {}, `${l.cidade}/${l.uf}`),
-    h("td", {}, l.agente),
+    h("td", { class: l.agente ? "" : "muted-cell" }, l.agente ?? "—"),
     h("td", { class: l.perfil ? "" : "muted-cell" }, l.perfil ?? "—"),
     h("td", { class: precatorio === "—" ? "muted-cell" : "" }, precatorio),
     h("td", {}, prioridade),

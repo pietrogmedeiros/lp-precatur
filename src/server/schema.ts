@@ -4,6 +4,7 @@ import {
   OBSERVACOES_MAX,
   ORIGENS,
   ORIGEM_PADRAO,
+  PEDE_QUALIFICACAO,
   PERFIS,
   PRIORIDADES,
   TEM_PRECATORIO,
@@ -29,11 +30,11 @@ export const leadRequestSchema = z
     telefone: z.string().trim().superRefine(rule("telefone")).transform(formatPhone),
     cidade: z.string().trim().superRefine(rule("cidade")),
     uf: z.enum(UFS, { error: fieldValidators.uf("") ?? undefined }),
-    agente: z.string().trim().superRefine(rule("agente")),
+    agente: z.string().trim().superRefine(rule("agente")).optional(),
     perfil: z.enum(PERFIS, { error: fieldValidators.perfil("") ?? undefined }),
-    tem_precatorio: z.enum(TEM_PRECATORIO, { error: fieldValidators.tem_precatorio("") ?? undefined }),
+    tem_precatorio: z.enum(TEM_PRECATORIO, { error: fieldValidators.tem_precatorio("") ?? undefined }).optional(),
     tipo_precatorio: z.enum(TIPOS_PRECATORIO).optional(),
-    prioridade: z.enum(PRIORIDADES, { error: fieldValidators.prioridade("") ?? undefined }),
+    prioridade: z.enum(PRIORIDADES, { error: fieldValidators.prioridade("") ?? undefined }).optional(),
     // Campo livre e opcional: string vazia vira ausência, para não gravar "" no lead.
     observacoes: z
       .string()
@@ -46,6 +47,11 @@ export const leadRequestSchema = z
     website: z.string().max(200).optional(),
   })
   .superRefine((data, ctx) => {
-    const message = validateTipoPrecatorio(data.tipo_precatorio ?? "", data.tem_precatorio);
+    // Páginas sem qualificação (palestra) não mandam esses campos; o servidor descarta se vierem.
+    if (!PEDE_QUALIFICACAO[data.origem]) return;
+    for (const campo of ["agente", "tem_precatorio", "prioridade"] as const) {
+      if (data[campo] === undefined) ctx.addIssue({ code: "custom", path: [campo], message: fieldValidators[campo]("") ?? "" });
+    }
+    const message = validateTipoPrecatorio(data.tipo_precatorio ?? "", data.tem_precatorio ?? "");
     if (message) ctx.addIssue({ code: "custom", path: ["tipo_precatorio"], message });
   }) satisfies z.ZodType<LeadRequest>;
