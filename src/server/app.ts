@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { ORIGENS, ORIGEM_PADRAO, camposForaDaPagina, type LeadField, type LeadResponse, type Origem, type PublicConfig } from "../shared/lead.js";
 import { buildMetrics } from "./metrics.js";
@@ -85,6 +85,20 @@ function toCsv(leads: StoredLead[]): string {
   return "\ufeff" + [cols.join(";"), ...rows].join("\r\n");
 }
 
+/**
+ * Acrescenta ?v=<hash do conteúdo> ao CSS e JS locais. O HTML nunca fica em cache, mas os assets
+ * ficam por 1h: sem a versão na URL, quem abriu a página antes de um deploy recebia o HTML novo
+ * com o CSS/JS antigos.
+ */
+function versionAssets(html: string, publicDir: string): string {
+  return html.replace(/(href|src)="\/([^"?]+\.(?:css|js))"/g, (tag, attr: string, file: string) => {
+    const full = path.join(publicDir, file);
+    if (!existsSync(full)) return tag;
+    const hash = createHash("sha256").update(readFileSync(full)).digest("hex").slice(0, 10);
+    return `${attr}="/${file}?v=${hash}"`;
+  });
+}
+
 /** URLs de cada página de captação; todas servem o mesmo index.html. */
 const PAGINAS: Record<Origem, string[]> = {
   lp: ["/", "/index.html"],
@@ -105,7 +119,7 @@ export function createApp({ config, store, delivery }: Deps) {
 
   // Injeta a configuração na página (sem requisição extra e sem "piscar" os selects).
   // A página é a mesma em todas as URLs; só muda a origem, que decide o webhook do lead.
-  const indexTemplate = readFileSync(path.join(config.publicDir, "index.html"), "utf8");
+  const indexTemplate = versionAssets(readFileSync(path.join(config.publicDir, "index.html"), "utf8"), config.publicDir);
   for (const origem of ORIGENS) {
     const publicConfig: PublicConfig = {
       evento: config.evento,
@@ -124,7 +138,7 @@ export function createApp({ config, store, delivery }: Deps) {
     });
   }
 
-  const metricsHtml = readFileSync(path.join(config.publicDir, "metrics.html"), "utf8");
+  const metricsHtml = versionAssets(readFileSync(path.join(config.publicDir, "metrics.html"), "utf8"), config.publicDir);
   app.get("/metrics", (_req, res) => {
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("X-Robots-Tag", "noindex, nofollow");

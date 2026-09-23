@@ -113,6 +113,8 @@ describe("API de leads", () => {
     assert.match(html, /Evento Teste/);
     assert.match(html, /"Thales"/);
     assert.ok(res.headers.get("content-security-policy"));
+    // Assets versionados: um deploy novo nunca reaproveita CSS/JS antigos do cache do celular.
+    assert.match(html, /href="\/styles\.css\?v=[0-9a-f]{10}"/);
   });
 
   it("serve a mesma página em /palestra-rafael, com outra origem e sem qualificação", async () => {
