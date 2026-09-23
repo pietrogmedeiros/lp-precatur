@@ -13,6 +13,8 @@ interface Deps {
   config: AppConfig;
   store: LeadStore;
   delivery: LeadDelivery;
+  /** Se DATA_DIR é um volume (null = não dá para saber). Exposto no /api/health. */
+  dataVolume?: boolean | null;
 }
 
 const CSP = [
@@ -111,7 +113,7 @@ function origemFrom(req: Request): Origem | undefined {
   return ORIGENS.find((o) => o === v);
 }
 
-export function createApp({ config, store, delivery }: Deps) {
+export function createApp({ config, store, delivery, dataVolume = null }: Deps) {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", config.trustProxy);
@@ -147,7 +149,7 @@ export function createApp({ config, store, delivery }: Deps) {
   app.use(express.static(config.publicDir, { index: false, maxAge: "1h" }));
 
   app.get("/api/health", (_req, res) => {
-    res.json({ ok: true, leads: store.all().length, pendentes: store.pending().length });
+    res.json({ ok: true, leads: store.all().length, pendentes: store.pending().length, volume: dataVolume });
   });
 
   app.post(
