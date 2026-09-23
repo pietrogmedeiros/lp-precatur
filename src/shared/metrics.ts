@@ -1,4 +1,4 @@
-import type { Origem, Perfil, Prioridade, TemPrecatorio, TipoPrecatorio, UF } from "./lead.js";
+import type { Origem, Originador, Perfil, Prioridade, TemPrecatorio, TipoPrecatorio, UF } from "./lead.js";
 
 export interface AgentMetrics {
   agente: string;
@@ -21,6 +21,7 @@ export interface MetricsLead {
   tem_precatorio?: TemPrecatorio;
   tipo_precatorio?: TipoPrecatorio;
   prioridade?: Prioridade;
+  originador?: Originador;
   observacoes?: string;
   evento: string;
   origem: Origem;
@@ -61,6 +62,8 @@ export interface MetricsResponse {
   perfis: Breakdown[];
   /** Municipal/Estadual/Federal, mais "Não tem". */
   precatorios: Breakdown[];
+  /** Originador do contato (só a palestra pergunta; os demais caem em "Não informado"). */
+  originadores: Breakdown[];
   /** Leads de prioridade alta, o número que puxa a ação do time. */
   alta_prioridade: number;
   /** Leads por hora do dia (0-23, no fuso do evento), considerando só hoje. */

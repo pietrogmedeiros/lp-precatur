@@ -142,7 +142,7 @@ body {
 
 .grid-2 { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; align-items: start; }
 .stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
-.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; align-items: start; }
 
 /* Ranking de agentes: barras horizontais, uma cor */
 .ranking { list-style: none; display: grid; gap: 4px; }
@@ -199,7 +199,7 @@ body {
 .filters input { min-width: 240px; }
 .filters select:focus, .filters input:focus { border-color: var(--brand); }
 .table-wrap { overflow-x: auto; margin: 0 -20px -20px; }
-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 1160px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 1280px; }
 th { text-align: left; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 10px 20px; border-bottom: 1px solid var(--line); background: var(--surface-2); position: sticky; top: 0; }
 td { padding: 12px 20px; border-bottom: 1px solid var(--grid); color: var(--ink); vertical-align: middle; }
 tbody tr:hover td { background: var(--surface-2); }

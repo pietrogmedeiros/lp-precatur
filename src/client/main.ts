@@ -1,8 +1,8 @@
 import {
   UFS,
-  CAMPOS_QUALIFICACAO,
   CONSENT_ERROR,
-  PEDE_QUALIFICACAO,
+  ORIGINADORES,
+  camposForaDaPagina,
   ORIGEM_PADRAO,
   PERFIS,
   PRIORIDADES,
@@ -110,6 +110,7 @@ const consentWrap = $("#consent-wrap");
 const ufSelect = $<HTMLSelectElement>("#uf");
 const agentSelect = $<HTMLSelectElement>("#agente");
 const perfilSelect = $<HTMLSelectElement>("#perfil");
+const originadorSelect = $<HTMLSelectElement>("#originador");
 const phoneInput = $<HTMLInputElement>("#telefone");
 const cityList = $<HTMLDataListElement>("#cidades-list");
 const tipoField = $("[data-field='tipo_precatorio']");
@@ -118,6 +119,7 @@ $("#event-name").textContent = config.evento || "Estamos no evento";
 UFS.forEach((uf) => ufSelect.add(new Option(uf, uf)));
 config.agentes.forEach((a) => agentSelect.add(new Option(a, a)));
 PERFIS.forEach((p) => perfilSelect.add(new Option(p, p)));
+ORIGINADORES.forEach((o) => originadorSelect.add(new Option(o, o)));
 
 /** Monta um grupo de radios como botões: <input> escondido + <label> clicável. */
 function buildChoices(containerId: string, name: string, options: readonly string[]): void {
@@ -192,15 +194,14 @@ ufSelect.addEventListener("change", async () => {
 /* ---------- Validação ---------- */
 const FORM_FIELDS = [
   "nome", "telefone", "cidade", "uf", "agente",
-  "perfil", "tem_precatorio", "tipo_precatorio", "prioridade", "observacoes",
+  "perfil", "originador", "tem_precatorio", "tipo_precatorio", "prioridade", "observacoes",
 ] as const satisfies readonly LeadField[];
 type FormField = (typeof FORM_FIELDS)[number];
 
-/** A palestra não tem agente: agente, precatório e prioridade ficam de fora do formulário. */
-const pedeQualificacao = PEDE_QUALIFICACAO[config.origem];
-const camposAtivos = FORM_FIELDS.filter(
-  (name) => pedeQualificacao || !(CAMPOS_QUALIFICACAO as readonly string[]).includes(name),
-);
+/** Campos exclusivos de outras páginas ficam escondidos e não são validados nem enviados. */
+const foraDaPagina: readonly string[] = camposForaDaPagina(config.origem);
+const perguntado = (name: FormField) => !foraDaPagina.includes(name);
+const camposAtivos = FORM_FIELDS.filter(perguntado);
 
 /** Valor atual do campo. Em grupos de radio, RadioNodeList.value é a opção marcada (ou ""). */
 function value(name: FormField): string {
@@ -315,16 +316,14 @@ form.addEventListener("submit", async (e) => {
     cidade: value("cidade").trim(),
     uf: value("uf") as LeadRequest["uf"],
     perfil: value("perfil") as LeadRequest["perfil"],
-    // Só vai o que se aplica: sem qualificação não há agente, sem precatório não há tipo,
-    // e observação vazia não vira "".
-    ...(pedeQualificacao
-      ? {
-          agente: value("agente"),
-          tem_precatorio: temPrecatorio,
-          ...(temPrecatorio === "Tem" ? { tipo_precatorio: value("tipo_precatorio") as LeadRequest["tipo_precatorio"] } : {}),
-          prioridade: value("prioridade") as LeadRequest["prioridade"],
-        }
+    // Só vai o que a página pergunta: sem precatório não há tipo, e observação vazia não vira "".
+    ...(perguntado("agente") ? { agente: value("agente") } : {}),
+    ...(perguntado("originador") ? { originador: value("originador") as LeadRequest["originador"] } : {}),
+    ...(perguntado("tem_precatorio") ? { tem_precatorio: temPrecatorio } : {}),
+    ...(perguntado("tipo_precatorio") && temPrecatorio === "Tem"
+      ? { tipo_precatorio: value("tipo_precatorio") as LeadRequest["tipo_precatorio"] }
       : {}),
+    ...(perguntado("prioridade") ? { prioridade: value("prioridade") as LeadRequest["prioridade"] } : {}),
     ...(observacoes ? { observacoes } : {}),
     consentimento_lgpd: true,
     criado_em: new Date().toISOString(),

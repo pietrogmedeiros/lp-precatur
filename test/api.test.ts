@@ -121,11 +121,11 @@ describe("API de leads", () => {
     const [htmlRaiz, htmlCopia] = await Promise.all([raiz.text(), copia.text()]);
     assert.match(htmlRaiz, /"origem":"lp"/);
     assert.match(htmlCopia, /"origem":"palestra-rafael"/);
-    assert.doesNotMatch(htmlRaiz, /sem-qualificacao/);
-    assert.equal(
-      htmlCopia.replace("palestra-rafael", "lp").replace('<body class="sem-qualificacao">', "<body>"),
-      htmlRaiz,
-    );
+    assert.match(htmlRaiz, /<body data-origem="lp">/);
+    assert.match(htmlCopia, /<body data-origem="palestra-rafael">/);
+    // Fora a origem, o HTML é o mesmo: os campos de cada página são escondidos pelo CSS.
+    const semOrigem = (html: string) => html.replace(/<body[^>]*>/, "").replace(/<script id="app-config".*?<\/script>/, "");
+    assert.equal(semOrigem(htmlCopia), semOrigem(htmlRaiz));
   });
 
   it("salva e encaminha o lead ao n8n", async () => {
@@ -228,7 +228,7 @@ describe("API de leads", () => {
     assert.equal(res.status, 200);
     const csv = await res.text();
     assert.match(csv, /recebido_em;nome;telefone/);
-    assert.match(csv, /perfil;tem_precatorio;tipo_precatorio;prioridade;observacoes/);
+    assert.match(csv, /perfil;tem_precatorio;tipo_precatorio;prioridade;originador;observacoes/);
     assert.match(csv, /Maria da Silva/);
   });
 
@@ -238,21 +238,32 @@ describe("API de leads", () => {
     assert.equal(res.status, 400);
     const body = (await res.json()) as { erros: Record<string, string> };
     assert.deepEqual(Object.keys(body.erros).sort(), ["agente", "prioridade", "tem_precatorio"]);
+
+    // Originador é da palestra: na LP principal é descartado.
+    const l = { ...lead(), originador: "Broker" };
+    assert.equal((await post(l)).status, 201);
+    assert.equal(store.get(l.id)?.originador, undefined);
   });
 
   it("envia os leads da palestra ao webhook próprio e separa no painel", async () => {
     // A palestra só pede nome, telefone, cidade, UF, perfil e observações.
     const { agente: _a, tem_precatorio: _t, tipo_precatorio: _tp, prioridade: _p, ...base } = lead();
-    const l = { ...base, origem: "palestra-rafael" };
+    const l = { ...base, originador: "Broker", origem: "palestra-rafael" };
     assert.equal((await post(l)).status, 201);
     assert.equal(webhook.paths[0], "/webhook/palestra-rafael");
     assert.equal((webhook.received[0] as Record<string, unknown>).origem, "palestra-rafael");
     assert.equal(store.get(l.id)?.origem, "palestra-rafael");
     assert.equal(store.get(l.id)?.perfil, "Advogado");
     assert.equal(store.get(l.id)?.agente, undefined);
+    assert.equal((webhook.received[0] as Record<string, unknown>).originador, "Broker");
+
+    // A palestra exige o originador.
+    const semOriginador = await post({ ...base, id: randomUUID(), origem: "palestra-rafael" });
+    assert.equal(semOriginador.status, 400);
+    assert.deepEqual(Object.keys(((await semOriginador.json()) as { erros: object }).erros), ["originador"]);
 
     // Qualificação enviada por engano pela palestra é descartada.
-    const extra = { ...lead(), agente: "Qualquer", origem: "palestra-rafael" };
+    const extra = { ...lead(), agente: "Qualquer", originador: "Outro", origem: "palestra-rafael" };
     assert.equal((await post(extra)).status, 201);
     assert.equal(store.get(extra.id)?.agente, undefined);
     assert.equal(store.get(extra.id)?.prioridade, undefined);

@@ -23,6 +23,10 @@ export type TipoPrecatorio = (typeof TIPOS_PRECATORIO)[number];
 export const PRIORIDADES = ["Alta", "Média", "Baixa"] as const;
 export type Prioridade = (typeof PRIORIDADES)[number];
 
+/** Quem originou o contato (perguntado na palestra). */
+export const ORIGINADORES = ["Advogado", "Escritório", "Intermediador", "Broker", "Consultor", "Outro"] as const;
+export type Originador = (typeof ORIGINADORES)[number];
+
 export const OBSERVACOES_MAX = 1000;
 
 /** Páginas de captação: cada uma tem sua URL, seu webhook no n8n e seu recorte no painel. */
@@ -35,9 +39,21 @@ export const ORIGEM_ROTULOS: Record<Origem, string> = {
   "palestra-rafael": "Palestra Rafael",
 };
 
-/** Qualificação feita pelo agente no estande; a palestra não tem agente, então não pergunta. */
-export const CAMPOS_QUALIFICACAO = ["agente", "tem_precatorio", "tipo_precatorio", "prioridade"] as const;
-export const PEDE_QUALIFICACAO: Record<Origem, boolean> = { lp: true, "palestra-rafael": false };
+/**
+ * Campos que só existem em algumas páginas; os demais são comuns a todas.
+ * A LP principal tem a qualificação feita pelo agente no estande; a palestra não tem agente,
+ * e pergunta o originador.
+ */
+export const CAMPOS_EXCLUSIVOS = ["agente", "tem_precatorio", "tipo_precatorio", "prioridade", "originador"] as const;
+export type CampoExclusivo = (typeof CAMPOS_EXCLUSIVOS)[number];
+export const CAMPOS_DA_PAGINA: Record<Origem, readonly CampoExclusivo[]> = {
+  lp: ["agente", "tem_precatorio", "tipo_precatorio", "prioridade"],
+  "palestra-rafael": ["originador"],
+};
+
+/** Campos que a página não pergunta (e que o servidor descarta se vierem). */
+export const camposForaDaPagina = (origem: Origem): CampoExclusivo[] =>
+  CAMPOS_EXCLUSIVOS.filter((c) => !CAMPOS_DA_PAGINA[origem].includes(c));
 
 /**
  * Dígitos do telefone sem código do país (+55) nem zero de operadora/DDD (027...).
@@ -74,13 +90,14 @@ export interface LeadFields {
   telefone: string;
   cidade: string;
   uf: UF;
-  /** Agente, precatório e prioridade só existem nas páginas que pedem qualificação (PEDE_QUALIFICACAO). */
+  /** Agente, precatório, prioridade e originador só existem nas páginas que os pedem (CAMPOS_DA_PAGINA). */
   agente?: string;
   perfil: Perfil;
   tem_precatorio?: TemPrecatorio;
   /** Só existe quando tem_precatorio é "Tem". */
   tipo_precatorio?: TipoPrecatorio;
   prioridade?: Prioridade;
+  originador?: Originador;
   observacoes?: string;
   consentimento_lgpd: true;
 }
@@ -121,6 +138,7 @@ export const fieldValidators = {
   perfil: (v) => (includes(PERFIS, v) ? null : "Selecione o perfil do contato."),
   tem_precatorio: (v) => (includes(TEM_PRECATORIO, v) ? null : "Informe se a pessoa tem precatório."),
   prioridade: (v) => (includes(PRIORIDADES, v) ? null : "Selecione a prioridade."),
+  originador: (v) => (includes(ORIGINADORES, v) ? null : "Selecione o originador."),
   observacoes: (v) => (v.trim().length <= OBSERVACOES_MAX ? null : `Máximo de ${OBSERVACOES_MAX} caracteres.`),
 } satisfies Record<Exclude<LeadField, "consentimento_lgpd" | "tipo_precatorio">, Validator>;
 

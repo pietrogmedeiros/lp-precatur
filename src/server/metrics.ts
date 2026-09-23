@@ -1,4 +1,4 @@
-import { ORIGENS, ORIGEM_PADRAO, ORIGEM_ROTULOS, PERFIS, PRIORIDADES, TIPOS_PRECATORIO, type Origem } from "../shared/lead.js";
+import { ORIGENS, ORIGEM_PADRAO, ORIGEM_ROTULOS, ORIGINADORES, PERFIS, PRIORIDADES, TIPOS_PRECATORIO, type Origem } from "../shared/lead.js";
 import type { AgentMetrics, Breakdown, MetricsLead, MetricsResponse, OrigemMetrics } from "../shared/metrics.js";
 import type { StoredLead } from "./store.js";
 
@@ -101,6 +101,7 @@ export function buildMetrics(
       ...(l.tem_precatorio ? { tem_precatorio: l.tem_precatorio } : {}),
       ...(l.tipo_precatorio ? { tipo_precatorio: l.tipo_precatorio } : {}),
       ...(l.prioridade ? { prioridade: l.prioridade } : {}),
+      ...(l.originador ? { originador: l.originador } : {}),
       ...(l.observacoes ? { observacoes: l.observacoes } : {}),
       evento: l.evento,
       origem: origemOf(l),
@@ -125,6 +126,7 @@ export function buildMetrics(
     prioridades: breakdown(leads, PRIORIDADES, (l) => l.prioridade ?? SEM_RESPOSTA),
     perfis: breakdown(leads, PERFIS, (l) => l.perfil ?? SEM_RESPOSTA),
     precatorios: breakdown(leads, [...TIPOS_PRECATORIO, "Não tem"], precatorioLabel),
+    originadores: breakdown(leads, ORIGINADORES, (l) => l.originador ?? SEM_RESPOSTA),
     alta_prioridade: leads.filter((l) => l.prioridade === "Alta").length,
     horas_hoje: hours,
     leads: metricsLeads,

@@ -173,6 +173,7 @@ function render(): void {
   renderBars("#prioridades", d.prioridades, d.total, true);
   renderBars("#perfis", d.perfis, d.total, false);
   renderBars("#precatorios", d.precatorios, d.total, false);
+  renderBars("#originadores", d.originadores, d.total, false);
   syncAgentFilter(d.agentes);
   syncPriorityFilter(d.prioridades);
   renderTable();
@@ -367,6 +368,7 @@ function row(l: MetricsLead): HTMLTableRowElement {
     h("td", {}, `${l.cidade}/${l.uf}`),
     h("td", { class: l.agente ? "" : "muted-cell" }, l.agente ?? "—"),
     h("td", { class: l.perfil ? "" : "muted-cell" }, l.perfil ?? "—"),
+    h("td", { class: l.originador ? "" : "muted-cell" }, l.originador ?? "—"),
     h("td", { class: precatorio === "—" ? "muted-cell" : "" }, precatorio),
     h("td", {}, prioridade),
     h("td", {}, badge),

@@ -4,7 +4,8 @@ import {
   OBSERVACOES_MAX,
   ORIGENS,
   ORIGEM_PADRAO,
-  PEDE_QUALIFICACAO,
+  CAMPOS_DA_PAGINA,
+  ORIGINADORES,
   PERFIS,
   PRIORIDADES,
   TEM_PRECATORIO,
@@ -35,6 +36,7 @@ export const leadRequestSchema = z
     tem_precatorio: z.enum(TEM_PRECATORIO, { error: fieldValidators.tem_precatorio("") ?? undefined }).optional(),
     tipo_precatorio: z.enum(TIPOS_PRECATORIO).optional(),
     prioridade: z.enum(PRIORIDADES, { error: fieldValidators.prioridade("") ?? undefined }).optional(),
+    originador: z.enum(ORIGINADORES, { error: fieldValidators.originador("") ?? undefined }).optional(),
     // Campo livre e opcional: string vazia vira ausência, para não gravar "" no lead.
     observacoes: z
       .string()
@@ -47,11 +49,13 @@ export const leadRequestSchema = z
     website: z.string().max(200).optional(),
   })
   .superRefine((data, ctx) => {
-    // Páginas sem qualificação (palestra) não mandam esses campos; o servidor descarta se vierem.
-    if (!PEDE_QUALIFICACAO[data.origem]) return;
-    for (const campo of ["agente", "tem_precatorio", "prioridade"] as const) {
+    // Cada página exige só os próprios campos; os de outras páginas o servidor descarta.
+    const campos = CAMPOS_DA_PAGINA[data.origem];
+    for (const campo of campos) {
+      if (campo === "tipo_precatorio") continue; // condicional, validado abaixo
       if (data[campo] === undefined) ctx.addIssue({ code: "custom", path: [campo], message: fieldValidators[campo]("") ?? "" });
     }
+    if (!campos.includes("tipo_precatorio")) return;
     const message = validateTipoPrecatorio(data.tipo_precatorio ?? "", data.tem_precatorio ?? "");
     if (message) ctx.addIssue({ code: "custom", path: ["tipo_precatorio"], message });
   }) satisfies z.ZodType<LeadRequest>;

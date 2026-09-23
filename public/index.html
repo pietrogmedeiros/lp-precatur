@@ -102,7 +102,7 @@
                   </div>
                 </div>
 
-                <div class="field" data-qualificacao data-field="agente">
+                <div class="field" data-so="lp" data-field="agente">
                   <label class="lbl" for="agente">Agente Precatur que te atendeu <span class="req">*</span></label>
                   <div class="control">
                     <select id="agente" name="agente" required>
@@ -122,19 +122,29 @@
                   <p class="err">Selecione o perfil do contato.</p>
                 </div>
 
-                <fieldset class="field" data-qualificacao data-field="tem_precatorio">
+                <div class="field" data-so="palestra-rafael" data-field="originador">
+                  <label class="lbl" for="originador">Originador <span class="req">*</span></label>
+                  <div class="control">
+                    <select id="originador" name="originador" required>
+                      <option value="" disabled selected>Selecione o originador</option>
+                    </select>
+                  </div>
+                  <p class="err">Selecione o originador.</p>
+                </div>
+
+                <fieldset class="field" data-so="lp" data-field="tem_precatorio">
                   <legend class="lbl">Tem precatório? <span class="req">*</span></legend>
                   <div class="choices" id="tem-precatorio-choices"></div>
                   <p class="err">Informe se a pessoa tem precatório.</p>
                 </fieldset>
 
-                <fieldset class="field" data-qualificacao data-field="tipo_precatorio" hidden>
+                <fieldset class="field" data-so="lp" data-field="tipo_precatorio" hidden>
                   <legend class="lbl">Tipo de precatório <span class="req">*</span></legend>
                   <div class="choices" id="tipo-precatorio-choices"></div>
                   <p class="err">Selecione o tipo de precatório.</p>
                 </fieldset>
 
-                <fieldset class="field" data-qualificacao data-field="prioridade">
+                <fieldset class="field" data-so="lp" data-field="prioridade">
                   <legend class="lbl">Prioridade <span class="req">*</span></legend>
                   <div class="choices" id="prioridade-choices"></div>
                   <p class="err">Selecione a prioridade.</p>

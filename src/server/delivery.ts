@@ -14,6 +14,7 @@ export function toWebhookPayload(lead: StoredLead) {
     tem_precatorio: lead.tem_precatorio,
     tipo_precatorio: lead.tipo_precatorio,
     prioridade: lead.prioridade,
+    originador: lead.originador,
     observacoes: lead.observacoes,
     evento: lead.evento,
     origem: lead.origem ?? ORIGEM_PADRAO,
