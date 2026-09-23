@@ -1,3 +1,4 @@
+import { ORIGEM_ROTULOS, type Origem } from "../shared/lead.js";
 import type { AgentMetrics, Breakdown, MetricsLead, MetricsResponse } from "../shared/metrics.js";
 
 const TOKEN_KEY = "precatur_metrics_token";
@@ -83,6 +84,8 @@ function setToken(token: string): void {
 /* ---------- Estado ---------- */
 let token = getToken();
 let data: MetricsResponse | null = null;
+/** Página de captação filtrada; "" = todas. */
+let selectedOrigem: Origem | "" = "";
 let selectedAgent = "";
 let selectedPriority = "";
 let query = "";
@@ -109,7 +112,8 @@ function showLogin(message = ""): void {
 async function load(): Promise<void> {
   refreshBtn.classList.add("spin");
   try {
-    const res = await fetch("/api/metrics", {
+    const origem = selectedOrigem;
+    const res = await fetch(`/api/metrics${origem ? `?origem=${origem}` : ""}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       cache: "no-store",
     });
@@ -118,6 +122,8 @@ async function load(): Promise<void> {
       return;
     }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    // Troca de aba no meio da requisição: descarta a resposta da aba anterior.
+    if (origem !== selectedOrigem) return;
     data = (await res.json()) as MetricsResponse;
     loginView.hidden = true;
     dashView.hidden = false;
@@ -143,10 +149,15 @@ function render(): void {
   if (!data) return;
   const d = data;
 
-  $("#evento").textContent = d.evento;
+  $("#evento").textContent = d.origem ? `${d.evento} · ${ORIGEM_ROTULOS[d.origem]}` : d.evento;
   $("#updated").textContent = `Atualizado às ${fmtTime.format(new Date(d.gerado_em))}`;
+  const csvParams = new URLSearchParams();
+  if (token) csvParams.set("token", token);
+  if (d.origem) csvParams.set("origem", d.origem);
   const csv = $<HTMLAnchorElement>("#csv");
-  csv.href = token ? `/metrics/leads.csv?token=${encodeURIComponent(token)}` : "/metrics/leads.csv";
+  csv.href = `/metrics/leads.csv${csvParams.size ? `?${csvParams}` : ""}`;
+
+  renderOrigens(d);
 
   $("#kpi-total").textContent = fmtInt.format(d.total);
   $("#kpi-hoje").textContent = fmtInt.format(d.hoje);
@@ -165,6 +176,27 @@ function render(): void {
   syncAgentFilter(d.agentes);
   syncPriorityFilter(d.prioridades);
   renderTable();
+}
+
+function renderOrigens(d: MetricsResponse): void {
+  const todas = d.origens.reduce(
+    (s, o) => ({ ...s, total: s.total + o.total, hoje: s.hoje + o.hoje, pendentes: s.pendentes + o.pendentes }),
+    { origem: "" as const, rotulo: "Todas as páginas", total: 0, hoje: 0, pendentes: 0 },
+  );
+  $("#origens").replaceChildren(
+    ...[todas, ...d.origens].map((o) => {
+      const btn = h("button", { type: "button" }, o.rotulo, h("b", {}, fmtInt.format(o.total)));
+      btn.setAttribute("aria-pressed", String(selectedOrigem === o.origem));
+      bindTooltip(btn, () => `${o.rotulo}: ${o.total} leads · ${o.hoje} hoje${o.pendentes ? ` · ${o.pendentes} pendente(s) no n8n` : ""}`);
+      btn.addEventListener("click", () => {
+        if (selectedOrigem === o.origem) return;
+        selectedOrigem = o.origem;
+        tooltip.hidden = true;
+        void load();
+      });
+      return btn;
+    }),
+  );
 }
 
 function renderRanking(agentes: AgentMetrics[], total: number): void {
@@ -329,6 +361,7 @@ function row(l: MetricsLead): HTMLTableRowElement {
     "tr",
     {},
     h("td", { class: "when" }, fmtDateTime.format(new Date(l.recebido_em))),
+    h("td", {}, ORIGEM_ROTULOS[l.origem] ?? l.origem),
     nome,
     h("td", {}, wa),
     h("td", {}, `${l.cidade}/${l.uf}`),

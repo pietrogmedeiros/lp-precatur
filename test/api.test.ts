@@ -14,6 +14,8 @@ import { LeadStore } from "../src/server/store.js";
 /** n8n falso: guarda o que recebe e pode simular falha. */
 function fakeWebhook() {
   const received: unknown[] = [];
+  /** Caminho de cada POST recebido, na mesma ordem de `received`. */
+  const paths: string[] = [];
   let failing = false;
   const server = createServer((req, res) => {
     let body = "";
@@ -24,11 +26,13 @@ function fakeWebhook() {
         return;
       }
       received.push(JSON.parse(body));
+      paths.push(req.url ?? "");
       res.writeHead(200, { "Content-Type": "application/json" }).end("{}");
     });
   });
   return {
     received,
+    paths,
     setFailing: (v: boolean) => (failing = v),
     start: () => new Promise<string>((r) => server.listen(0, "127.0.0.1", () => r(`http://127.0.0.1:${(server.address() as AddressInfo).port}/webhook/evento`))),
     stop: () => new Promise<void>((r) => server.close(() => r())),
@@ -66,17 +70,18 @@ describe("API de leads", () => {
 
   before(async () => {
     const webhookUrl = await webhook.start();
+    const webhooks = { lp: webhookUrl, "palestra-rafael": webhookUrl.replace(/evento$/, "palestra-rafael") };
     dataDir = await mkdtemp(path.join(tmpdir(), "lp-precatur-"));
     const config = {
       ...loadConfig({}),
       dataDir,
-      webhookUrl,
+      webhooks,
       adminToken: "segredo",
       evento: "Evento Teste",
     };
     store = new LeadStore(dataDir);
     await store.load();
-    delivery = new LeadDelivery(store, webhookUrl, 2_000);
+    delivery = new LeadDelivery(store, webhooks, 2_000);
     server = createServer(createApp({ config, store, delivery }));
     baseUrl = await listen(server);
   });
@@ -89,6 +94,7 @@ describe("API de leads", () => {
 
   beforeEach(() => {
     webhook.received.length = 0;
+    webhook.paths.length = 0;
     webhook.setFailing(false);
   });
 
@@ -109,10 +115,13 @@ describe("API de leads", () => {
     assert.ok(res.headers.get("content-security-policy"));
   });
 
-  it("serve a mesma página em /palestra-rafael", async () => {
+  it("serve a mesma página em /palestra-rafael, só com outra origem", async () => {
     const [raiz, copia] = await Promise.all([fetch(baseUrl), fetch(`${baseUrl}/palestra-rafael`)]);
     assert.equal(copia.status, 200);
-    assert.equal(await copia.text(), await raiz.text());
+    const [htmlRaiz, htmlCopia] = await Promise.all([raiz.text(), copia.text()]);
+    assert.match(htmlRaiz, /"origem":"lp"/);
+    assert.match(htmlCopia, /"origem":"palestra-rafael"/);
+    assert.equal(htmlCopia.replace("palestra-rafael", "lp"), htmlRaiz);
   });
 
   it("salva e encaminha o lead ao n8n", async () => {
@@ -127,6 +136,8 @@ describe("API de leads", () => {
     assert.equal(sent.tipo_precatorio, "Municipal");
     assert.equal(sent.prioridade, "Alta");
     assert.equal(sent.evento, "Evento Teste");
+    assert.equal(sent.origem, "lp");
+    assert.equal(webhook.paths[0], "/webhook/evento");
     assert.equal(sent.website, undefined);
     assert.equal(store.get(l.id)?.enviado, true);
     assert.match(await readFile(path.join(dataDir, "leads.jsonl"), "utf8"), new RegExp(l.id));
@@ -215,5 +226,33 @@ describe("API de leads", () => {
     assert.match(csv, /recebido_em;nome;telefone/);
     assert.match(csv, /perfil;tem_precatorio;tipo_precatorio;prioridade;observacoes/);
     assert.match(csv, /Maria da Silva/);
+  });
+
+  it("envia os leads da palestra ao webhook próprio e separa no painel", async () => {
+    const l = { ...lead(), origem: "palestra-rafael" };
+    assert.equal((await post(l)).status, 201);
+    assert.equal(webhook.paths[0], "/webhook/palestra-rafael");
+    assert.equal((webhook.received[0] as Record<string, unknown>).origem, "palestra-rafael");
+    assert.equal(store.get(l.id)?.origem, "palestra-rafael");
+
+    const todas = (await (await fetch(`${baseUrl}/api/metrics`)).json()) as {
+      total: number;
+      origens: { origem: string; total: number }[];
+    };
+    const palestra = (await (await fetch(`${baseUrl}/api/metrics?origem=palestra-rafael`)).json()) as {
+      origem: string;
+      total: number;
+      origens: { origem: string; total: number }[];
+      leads: { id: string; origem: string }[];
+    };
+    assert.equal(palestra.origem, "palestra-rafael");
+    assert.equal(palestra.total, 1);
+    assert.deepEqual(palestra.leads.map((x) => [x.id, x.origem]), [[l.id, "palestra-rafael"]]);
+    assert.deepEqual(palestra.origens, todas.origens, "o resumo por página ignora o filtro");
+    assert.deepEqual(todas.origens.map((o) => o.total), [todas.total - 1, 1]);
+
+    const csv = await (await fetch(`${baseUrl}/metrics/leads.csv?origem=palestra-rafael`)).text();
+    assert.equal(csv.trim().split("\r\n").length, 2);
+    assert.match(csv, /"palestra-rafael"/);
   });
 });

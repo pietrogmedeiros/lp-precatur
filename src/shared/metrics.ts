@@ -1,4 +1,4 @@
-import type { Perfil, Prioridade, TemPrecatorio, TipoPrecatorio, UF } from "./lead.js";
+import type { Origem, Perfil, Prioridade, TemPrecatorio, TipoPrecatorio, UF } from "./lead.js";
 
 export interface AgentMetrics {
   agente: string;
@@ -23,6 +23,7 @@ export interface MetricsLead {
   prioridade?: Prioridade;
   observacoes?: string;
   evento: string;
+  origem: Origem;
   recebido_em: string;
   enviado: boolean;
   tentativas: number;
@@ -35,8 +36,20 @@ export interface Breakdown {
   total: number;
 }
 
+/** Leads de cada página de captação, sempre sobre o total (ignora o filtro de página). */
+export interface OrigemMetrics {
+  origem: Origem;
+  rotulo: string;
+  total: number;
+  hoje: number;
+  pendentes: number;
+}
+
 export interface MetricsResponse {
   evento: string;
+  /** Página filtrada (?origem=...), ou null quando o painel mostra todas. */
+  origem: Origem | null;
+  origens: OrigemMetrics[];
   gerado_em: string;
   fuso: string;
   total: number;

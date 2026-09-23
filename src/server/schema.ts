@@ -2,6 +2,8 @@ import { z } from "zod";
 import {
   CONSENT_ERROR,
   OBSERVACOES_MAX,
+  ORIGENS,
+  ORIGEM_PADRAO,
   PERFIS,
   PRIORIDADES,
   TEM_PRECATORIO,
@@ -39,6 +41,7 @@ export const leadRequestSchema = z
       .max(OBSERVACOES_MAX, { error: `Máximo de ${OBSERVACOES_MAX} caracteres.` })
       .optional()
       .transform((v) => v || undefined),
+    origem: z.enum(ORIGENS).default(ORIGEM_PADRAO),
     consentimento_lgpd: z.literal(true, { error: CONSENT_ERROR }),
     website: z.string().max(200).optional(),
   })

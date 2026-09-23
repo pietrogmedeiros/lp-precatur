@@ -1,5 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Origem } from "../shared/lead.js";
 
 try {
   process.loadEnvFile();
@@ -26,7 +27,8 @@ export interface AppConfig {
   trustProxy: boolean;
   publicDir: string;
   dataDir: string;
-  webhookUrl: string;
+  /** Webhook do n8n de cada página de captação (vazio = lead fica só no disco). */
+  webhooks: Record<Origem, string>;
   webhookTimeoutMs: number;
   retryIntervalMs: number;
   adminToken: string;
@@ -44,7 +46,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     trustProxy: env.TRUST_PROXY === "true",
     publicDir: path.join(rootDir, "public"),
     dataDir: path.resolve(rootDir, env.DATA_DIR ?? "data"),
-    webhookUrl: env.N8N_WEBHOOK_URL ?? "",
+    webhooks: {
+      lp: env.N8N_WEBHOOK_URL ?? "",
+      "palestra-rafael": env.N8N_WEBHOOK_URL_PALESTRA_RAFAEL ?? "",
+    },
     webhookTimeoutMs: int(env.N8N_TIMEOUT_MS, 10_000),
     retryIntervalMs: int(env.RETRY_INTERVAL_MS, 60_000),
     adminToken: env.ADMIN_TOKEN ?? "",

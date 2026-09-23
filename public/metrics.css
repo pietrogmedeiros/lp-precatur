@@ -114,6 +114,20 @@ body {
 .login-err { color: var(--error); font-size: 14px; font-weight: 600; min-height: 22px; margin: 8px 0; }
 
 /* ---------- Painel ---------- */
+/* Abas por página de captação: filtram o painel inteiro */
+.origens { display: flex; gap: 8px; flex-wrap: wrap; }
+.origens button {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 40px; padding: 0 16px;
+  border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink-2);
+  font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+.origens button b { font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+.origens button:hover { border-color: var(--brand); }
+.origens button[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #FDFAF7; }
+.origens button[aria-pressed="true"] b { color: rgba(253, 250, 247, .75); }
+.origens button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .dash { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; padding-top: 24px; padding-bottom: 48px; }
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
 .kpi-label { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
@@ -185,7 +199,7 @@ body {
 .filters input { min-width: 240px; }
 .filters select:focus, .filters input:focus { border-color: var(--brand); }
 .table-wrap { overflow-x: auto; margin: 0 -20px -20px; }
-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 1040px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 1160px; }
 th { text-align: left; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 10px 20px; border-bottom: 1px solid var(--line); background: var(--surface-2); position: sticky; top: 0; }
 td { padding: 12px 20px; border-bottom: 1px solid var(--grid); color: var(--ink); vertical-align: middle; }
 tbody tr:hover td { background: var(--surface-2); }

@@ -25,6 +25,16 @@ export type Prioridade = (typeof PRIORIDADES)[number];
 
 export const OBSERVACOES_MAX = 1000;
 
+/** Páginas de captação: cada uma tem sua URL, seu webhook no n8n e seu recorte no painel. */
+export const ORIGENS = ["lp", "palestra-rafael"] as const;
+export type Origem = (typeof ORIGENS)[number];
+/** Leads anteriores ao campo (e da fila offline antiga) vieram da LP principal. */
+export const ORIGEM_PADRAO: Origem = "lp";
+export const ORIGEM_ROTULOS: Record<Origem, string> = {
+  lp: "LP principal",
+  "palestra-rafael": "Palestra Rafael",
+};
+
 /**
  * Dígitos do telefone sem código do país (+55) nem zero de operadora/DDD (027...).
  * Ex.: "+55 (27) 99658-4654" -> "27996584654".
@@ -76,6 +86,8 @@ export type LeadField = keyof LeadFields;
 export interface LeadRequest extends LeadFields {
   id: string;
   criado_em: string;
+  /** Página em que o lead foi captado; ausente em leads da fila offline antiga. */
+  origem?: Origem;
   /** Honeypot: pessoas não veem este campo, bots costumam preenchê-lo. */
   website?: string;
 }
@@ -121,6 +133,7 @@ export const CONSENT_ERROR = "É preciso autorizar o contato.";
 /** Configuração pública injetada pelo servidor na página. */
 export interface PublicConfig {
   evento: string;
+  origem: Origem;
   agentes: string[];
   autoResetSegundos: number;
 }

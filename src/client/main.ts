@@ -1,6 +1,7 @@
 import {
   UFS,
   CONSENT_ERROR,
+  ORIGEM_PADRAO,
   PERFIS,
   PRIORIDADES,
   TEM_PRECATORIO,
@@ -26,7 +27,7 @@ function $<T extends HTMLElement = HTMLElement>(selector: string): T {
 
 function readConfig(): PublicConfig {
   const raw = document.getElementById("app-config")?.textContent;
-  const fallback: PublicConfig = { evento: "", agentes: [], autoResetSegundos: 15 };
+  const fallback: PublicConfig = { evento: "", origem: ORIGEM_PADRAO, agentes: [], autoResetSegundos: 15 };
   if (!raw) return fallback;
   try {
     return { ...fallback, ...(JSON.parse(raw) as Partial<PublicConfig>) };
@@ -314,6 +315,7 @@ form.addEventListener("submit", async (e) => {
     ...(observacoes ? { observacoes } : {}),
     consentimento_lgpd: true,
     criado_em: new Date().toISOString(),
+    origem: config.origem,
     website: (form.elements.namedItem("website") as HTMLInputElement).value,
   };
 

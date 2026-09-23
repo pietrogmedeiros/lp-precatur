@@ -1,3 +1,4 @@
+import { ORIGEM_PADRAO, type Origem } from "../shared/lead.js";
 import type { LeadStore, StoredLead } from "./store.js";
 
 /** Dados enviados ao n8n (sem os campos internos de controle de entrega). */
@@ -15,6 +16,7 @@ export function toWebhookPayload(lead: StoredLead) {
     prioridade: lead.prioridade,
     observacoes: lead.observacoes,
     evento: lead.evento,
+    origem: lead.origem ?? ORIGEM_PADRAO,
     consentimento_lgpd: lead.consentimento_lgpd,
     criado_em: lead.criado_em,
     recebido_em: lead.recebido_em,
@@ -28,18 +30,28 @@ export class LeadDelivery {
 
   constructor(
     private readonly store: LeadStore,
-    private readonly webhookUrl: string,
+    private readonly webhooks: Partial<Record<Origem, string>>,
     private readonly timeoutMs: number,
   ) {}
 
+  /** Cada página de captação tem seu próprio webhook. */
+  private urlFor(lead: StoredLead): string {
+    return this.webhooks[lead.origem ?? ORIGEM_PADRAO] ?? "";
+  }
+
+  private get enabled(): boolean {
+    return Object.values(this.webhooks).some(Boolean);
+  }
+
   /** Tenta enviar o lead ao n8n e registra o resultado. Nunca lança erro. */
   async deliver(lead: StoredLead): Promise<StoredLead> {
-    if (!this.webhookUrl || this.inFlight.has(lead.id)) return lead;
+    const url = this.urlFor(lead);
+    if (!url || this.inFlight.has(lead.id)) return lead;
 
     this.inFlight.add(lead.id);
     const attempt = { ...lead, tentativas: lead.tentativas + 1 };
     try {
-      const res = await fetch(this.webhookUrl, {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(toWebhookPayload(lead)),
@@ -62,7 +74,7 @@ export class LeadDelivery {
 
   /** Reenvia todos os leads pendentes, um por vez. */
   async retryPending(): Promise<void> {
-    if (this.retrying || !this.webhookUrl) return;
+    if (this.retrying || !this.enabled) return;
     this.retrying = true;
     try {
       for (const { id } of this.store.pending()) {
@@ -76,7 +88,7 @@ export class LeadDelivery {
   }
 
   startRetryLoop(intervalMs: number): void {
-    if (!this.webhookUrl || intervalMs <= 0) return;
+    if (!this.enabled || intervalMs <= 0) return;
     this.retryTimer = setInterval(() => void this.retryPending(), intervalMs);
     this.retryTimer.unref();
   }

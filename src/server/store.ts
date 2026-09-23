@@ -1,10 +1,12 @@
 import { appendFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import type { LeadFields } from "../shared/lead.js";
+import type { LeadFields, Origem } from "../shared/lead.js";
 
 export interface StoredLead extends LeadFields {
   id: string;
   evento: string;
+  /** Ausente em leads gravados antes do campo existir (todos da LP principal). */
+  origem?: Origem;
   criado_em: string;
   recebido_em: string;
   enviado: boolean;

@@ -1,5 +1,5 @@
-import { PERFIS, PRIORIDADES, TIPOS_PRECATORIO } from "../shared/lead.js";
-import type { AgentMetrics, Breakdown, MetricsLead, MetricsResponse } from "../shared/metrics.js";
+import { ORIGENS, ORIGEM_PADRAO, ORIGEM_ROTULOS, PERFIS, PRIORIDADES, TIPOS_PRECATORIO, type Origem } from "../shared/lead.js";
+import type { AgentMetrics, Breakdown, MetricsLead, MetricsResponse, OrigemMetrics } from "../shared/metrics.js";
 import type { StoredLead } from "./store.js";
 
 /** Leads antigos (anteriores ao campo) e valores fora da lista caem aqui. */
@@ -35,16 +35,31 @@ const hourFmt = new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, hour: "2
 const dayOf = (iso: string | Date) => dayFmt.format(new Date(iso));
 const hourOf = (iso: string) => Number(hourFmt.format(new Date(iso)));
 
+const origemOf = (lead: StoredLead): Origem => lead.origem ?? ORIGEM_PADRAO;
+
 /**
  * Consolida os leads por agente, UF e hora.
  * Agentes configurados aparecem mesmo sem leads; agentes antigos (fora da lista atual) também entram.
+ * Com `origem`, tudo considera só os leads daquela página, exceto o resumo por página.
  */
 export function buildMetrics(
-  leads: StoredLead[],
-  opts: { evento: string; agentes: string[]; now?: Date },
+  todos: StoredLead[],
+  opts: { evento: string; agentes: string[]; origem?: Origem; now?: Date },
 ): MetricsResponse {
   const now = opts.now ?? new Date();
   const today = dayOf(now);
+
+  const origens: OrigemMetrics[] = ORIGENS.map((origem) => {
+    const daPagina = todos.filter((l) => origemOf(l) === origem);
+    return {
+      origem,
+      rotulo: ORIGEM_ROTULOS[origem],
+      total: daPagina.length,
+      hoje: daPagina.filter((l) => dayOf(l.recebido_em) === today).length,
+      pendentes: daPagina.filter((l) => !l.enviado).length,
+    };
+  });
+  const leads = opts.origem ? todos.filter((l) => origemOf(l) === opts.origem) : todos;
 
   const byAgent = new Map<string, AgentMetrics>();
   for (const agente of opts.agentes) byAgent.set(agente, { agente, total: 0, hoje: 0, pendentes: 0 });
@@ -85,6 +100,7 @@ export function buildMetrics(
       ...(l.prioridade ? { prioridade: l.prioridade } : {}),
       ...(l.observacoes ? { observacoes: l.observacoes } : {}),
       evento: l.evento,
+      origem: origemOf(l),
       recebido_em: l.recebido_em,
       enviado: l.enviado,
       tentativas: l.tentativas,
@@ -94,6 +110,8 @@ export function buildMetrics(
 
   return {
     evento: opts.evento,
+    origem: opts.origem ?? null,
+    origens,
     gerado_em: now.toISOString(),
     fuso: TIME_ZONE,
     total: leads.length,

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { timingSafeEqual } from "node:crypto";
 import express, { type NextFunction, type Request, type Response } from "express";
-import type { LeadField, LeadResponse, PublicConfig } from "../shared/lead.js";
+import { ORIGENS, ORIGEM_PADRAO, type LeadField, type LeadResponse, type Origem, type PublicConfig } from "../shared/lead.js";
 import { buildMetrics } from "./metrics.js";
 import { leadRequestSchema } from "./schema.js";
 import type { AppConfig } from "./config.js";
@@ -74,12 +74,27 @@ function adminTokenFrom(req: Request): string | undefined {
 function toCsv(leads: StoredLead[]): string {
   const cols = [
     "recebido_em", "nome", "telefone", "cidade", "uf", "agente", "perfil", "tem_precatorio", "tipo_precatorio",
-    "prioridade", "observacoes", "evento", "enviado", "tentativas", "ultimo_erro", "id",
+    "prioridade", "observacoes", "evento", "origem", "enviado", "tentativas", "ultimo_erro", "id",
   ] as const;
   const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const rows = leads.map((l) => cols.map((c) => esc(l[c])).join(";"));
+  const rows = leads.map((l) => {
+    const row = { ...l, origem: l.origem ?? ORIGEM_PADRAO };
+    return cols.map((c) => esc(row[c])).join(";");
+  });
   // BOM + ";" para o Excel em português abrir com acentos e colunas corretas.
   return "\ufeff" + [cols.join(";"), ...rows].join("\r\n");
+}
+
+/** URLs de cada página de captação; todas servem o mesmo index.html. */
+const PAGINAS: Record<Origem, string[]> = {
+  lp: ["/", "/index.html"],
+  "palestra-rafael": ["/palestra-rafael"],
+};
+
+/** ?origem=... válido, ou undefined (= todas as páginas). */
+function origemFrom(req: Request): Origem | undefined {
+  const v = req.query.origem;
+  return ORIGENS.find((o) => o === v);
 }
 
 export function createApp({ config, store, delivery }: Deps) {
@@ -88,24 +103,26 @@ export function createApp({ config, store, delivery }: Deps) {
   app.set("trust proxy", config.trustProxy);
   app.use(securityHeaders);
 
-  const publicConfig: PublicConfig = {
-    evento: config.evento,
-    agentes: config.agentes,
-    autoResetSegundos: config.autoResetSegundos,
-  };
   // Injeta a configuração na página (sem requisição extra e sem "piscar" os selects).
-  const configJson = JSON.stringify(publicConfig).replace(/</g, "\\u003c");
-  const indexHtml = readFileSync(path.join(config.publicDir, "index.html"), "utf8").replace(
-    "<!--APP_CONFIG-->",
-    `<script id="app-config" type="application/json">${configJson}</script>`,
-  );
-
-  const sendIndex = (_req: Request, res: Response) => {
-    res.setHeader("Cache-Control", "no-cache");
-    res.type("html").send(indexHtml);
-  };
-  // /palestra-rafael é uma cópia idêntica da LP (mesmo formulário, evento e agentes).
-  app.get(["/", "/index.html", "/palestra-rafael"], sendIndex);
+  // A página é a mesma em todas as URLs; só muda a origem, que decide o webhook do lead.
+  const indexTemplate = readFileSync(path.join(config.publicDir, "index.html"), "utf8");
+  for (const origem of ORIGENS) {
+    const publicConfig: PublicConfig = {
+      evento: config.evento,
+      origem,
+      agentes: config.agentes,
+      autoResetSegundos: config.autoResetSegundos,
+    };
+    const configJson = JSON.stringify(publicConfig).replace(/</g, "\\u003c");
+    const html = indexTemplate.replace(
+      "<!--APP_CONFIG-->",
+      `<script id="app-config" type="application/json">${configJson}</script>`,
+    );
+    app.get(PAGINAS[origem], (_req, res) => {
+      res.setHeader("Cache-Control", "no-cache");
+      res.type("html").send(html);
+    });
+  }
 
   const metricsHtml = readFileSync(path.join(config.publicDir, "metrics.html"), "utf8");
   app.get("/metrics", (_req, res) => {
@@ -168,11 +185,12 @@ export function createApp({ config, store, delivery }: Deps) {
     },
   );
 
-  const sendCsv = (res: Response) => {
+  const sendCsv = (res: Response, origem?: Origem) => {
     const date = new Date().toISOString().slice(0, 10);
-    res.setHeader("Content-Disposition", `attachment; filename="leads-precatur-${date}.csv"`);
+    const leads = origem ? store.all().filter((l) => (l.origem ?? ORIGEM_PADRAO) === origem) : store.all();
+    res.setHeader("Content-Disposition", `attachment; filename="leads-precatur-${origem ? `${origem}-` : ""}${date}.csv"`);
     res.setHeader("Cache-Control", "no-store");
-    res.type("text/csv; charset=utf-8").send(toCsv(store.all()));
+    res.type("text/csv; charset=utf-8").send(toCsv(leads));
   };
 
   const isAdmin = (req: Request) => {
@@ -193,7 +211,7 @@ export function createApp({ config, store, delivery }: Deps) {
       res.status(401).json({ ok: false, erro: "Token inválido." });
       return;
     }
-    res.json(buildMetrics(store.all(), { evento: config.evento, agentes: config.agentes }));
+    res.json(buildMetrics(store.all(), { evento: config.evento, agentes: config.agentes, origem: origemFrom(req) }));
   });
 
   // CSV do painel (mesma regra de acesso do /metrics).
@@ -202,7 +220,7 @@ export function createApp({ config, store, delivery }: Deps) {
       res.status(401).send("Token inválido.");
       return;
     }
-    sendCsv(res);
+    sendCsv(res, origemFrom(req));
   });
 
   // Exportação CSV: /admin/leads.csv?token=SEU_TOKEN (desativado se ADMIN_TOKEN estiver vazio).
@@ -211,7 +229,7 @@ export function createApp({ config, store, delivery }: Deps) {
       res.status(404).send("Not found");
       return;
     }
-    sendCsv(res);
+    sendCsv(res, origemFrom(req));
   });
 
   app.use((_req, res) => {

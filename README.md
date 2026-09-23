@@ -83,6 +83,7 @@ docker run -p 3000:3000 --env-file .env -v $(pwd)/data:/app/data lp-precatur
 | Variável | Padrão | Descrição |
 |---|---|---|
 | `N8N_WEBHOOK_URL` | (vazio) | Webhook que recebe os leads. Vazio: os leads ficam só em `data/leads.jsonl` |
+| `N8N_WEBHOOK_URL_PALESTRA_RAFAEL` | (vazio) | Webhook dos leads da página `/palestra-rafael`. Vazio: ficam pendentes no disco e são enviados quando for preenchido |
 | `EVENT_NAME` | `Precatório Summit` | Nome do evento (selo no topo e campo `evento`) |
 | `AGENTS` | `Thales,Aline,Thaynara,Tati,Henrique,Rhuan,Calebe,Karol,Vitoria,Matheus,Sanmilly,Ayrton,Laís,Carlos,Chris,Rafael` | Agentes da lista, separados por vírgula |
 | `AUTO_RESET_SECONDS` | `15` | Volta ao formulário após o sucesso (`0` desativa) |
@@ -100,10 +101,11 @@ docker run -p 3000:3000 --env-file .env -v $(pwd)/data:/app/data lp-precatur
 | Método | Rota | Descrição |
 |---|---|---|
 | `GET` | `/` | Landing page |
+| `GET` | `/palestra-rafael` | A mesma landing page; os leads vão para `N8N_WEBHOOK_URL_PALESTRA_RAFAEL` |
 | `POST` | `/api/leads` | Recebe um lead (201 criado, 200 duplicado, 400 com erros por campo) |
-| `GET` | `/metrics` | Painel: leads por agente, por hora e por UF, e a lista de leads com filtro por agente |
-| `GET` | `/api/metrics` | Dados do painel em JSON |
-| `GET` | `/metrics/leads.csv` | CSV com a mesma regra de acesso do painel |
+| `GET` | `/metrics` | Painel: leads por página, por agente, por hora e por UF, e a lista de leads com filtro por agente |
+| `GET` | `/api/metrics` | Dados do painel em JSON (`?origem=lp` ou `?origem=palestra-rafael` filtra por página) |
+| `GET` | `/metrics/leads.csv` | CSV com a mesma regra de acesso do painel (aceita o mesmo `?origem=`) |
 | `GET` | `/api/health` | Status, total de leads e pendentes de envio ao n8n |
 | `GET` | `/admin/leads.csv?token=...` | Exporta todos os leads em CSV (abre direto no Excel) |
 
