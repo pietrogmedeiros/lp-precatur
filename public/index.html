@@ -60,8 +60,10 @@
             <div class="ribbon" data-so="lp palestra-rafael">Análise 100% gratuita</div>
 
             <div class="form-body">
-              <h2>Quero antecipar meu precatório</h2>
-              <p class="sub">Preencha seus dados e um especialista entra em contato.</p>
+              <h2 data-so="lp palestra-rafael">Quero antecipar meu precatório</h2>
+              <p class="sub" data-so="lp palestra-rafael">Preencha seus dados e um especialista entra em contato.</p>
+              <h2 data-so="sorteio">Participe do sorteio</h2>
+              <p class="sub" data-so="sorteio">Preencha seu nome e telefone para concorrer. Seu número aparece ao final.</p>
 
               <div class="form-alert" id="form-alert" role="alert"></div>
 
@@ -167,11 +169,13 @@
 
                 <label class="consent" id="consent-wrap">
                   <input type="checkbox" id="consent" name="consent" required>
-                  <span>Autorizo a Precatur a entrar em contato comigo por telefone e WhatsApp sobre a análise do meu precatório, conforme a LGPD.</span>
+                  <span data-so="lp palestra-rafael">Autorizo a Precatur a entrar em contato comigo por telefone e WhatsApp sobre a análise do meu precatório, conforme a LGPD.</span>
+                  <span data-so="sorteio">Autorizo a Precatur a entrar em contato comigo por telefone e WhatsApp sobre o sorteio, conforme a LGPD.</span>
                 </label>
 
                 <button type="submit" class="btn" id="submit-btn">
-                  <span class="btn-label">Quero minha análise gratuita</span>
+                  <span class="btn-label" data-so="lp palestra-rafael">Quero minha análise gratuita</span>
+                  <span class="btn-label" data-so="sorteio">Quero participar do sorteio</span>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                   <span class="spinner" aria-hidden="true"></span>
                 </button>
