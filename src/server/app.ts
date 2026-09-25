@@ -8,6 +8,7 @@ import { leadRequestSchema } from "./schema.js";
 import type { AppConfig } from "./config.js";
 import type { LeadDelivery } from "./delivery.js";
 import type { LeadStore, StoredLead } from "./store.js";
+import type { SorteioResponse } from "../shared/sorteio.js";
 
 interface Deps {
   config: AppConfig;
@@ -149,6 +150,12 @@ export function createApp({ config, store, delivery, dataVolume = null }: Deps) 
     res.setHeader("X-Robots-Tag", "noindex, nofollow");
     res.type("html").send(metricsHtml);
   });
+  const sorteadorHtml = versionAssets(readFileSync(path.join(config.publicDir, "sorteador.html"), "utf8"), config.publicDir);
+  app.get("/sorteador", (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    res.type("html").send(sorteadorHtml);
+  });
   app.use(express.static(config.publicDir, { index: false, maxAge: "1h" }));
 
   app.get("/api/health", (_req, res) => {
@@ -236,6 +243,21 @@ export function createApp({ config, store, delivery, dataVolume = null }: Deps) 
       return;
     }
     res.json(buildMetrics(store.all(), { evento: config.evento, agentes: config.agentes, origem: origemFrom(req) }));
+  });
+
+  // Inscritos do /sorteio para o sorteador (mesma regra de acesso do /metrics).
+  app.get("/api/sorteio", rateLimit(config.rateLimitPerMinute), (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    if (!canViewMetrics(req)) {
+      res.status(401).json({ ok: false, erro: "Token inválido." });
+      return;
+    }
+    const participantes = store
+      .all()
+      .filter((l) => l.origem === "sorteio" && l.numero)
+      .map((l) => ({ numero: l.numero!, nome: l.nome, telefone: l.telefone }))
+      .sort((a, b) => a.numero - b.numero);
+    res.json({ evento: config.evento, participantes } satisfies SorteioResponse);
   });
 
   // CSV do painel (mesma regra de acesso do /metrics).

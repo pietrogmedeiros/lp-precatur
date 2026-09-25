@@ -1,0 +1,105 @@
+/* Sorteador: usa os tokens, topo, botões e login do metrics.css. */
+:root { --sortear-bg: var(--brand); --sortear-hover: var(--brand-deep); --sortear-ink: #FDFAF7; }
+/* No escuro, o verde-petróleo da marca some no fundo: o botão usa o dourado. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --sortear-bg: #C9A27A; --sortear-hover: #D8B792; --sortear-ink: #1F2A2E; }
+}
+:root[data-theme="dark"] { --sortear-bg: #C9A27A; --sortear-hover: #D8B792; --sortear-ink: #1F2A2E; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.sorteador {
+  display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start;
+  padding-top: 24px; padding-bottom: 48px;
+}
+
+/* ---------- Palco ---------- */
+.palco {
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 28px; padding: 40px 24px 36px; min-height: calc(100vh - 150px); justify-content: center;
+}
+.palco-info { font-size: 15px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+
+.bilhete {
+  width: 100%; max-width: 760px; padding: 40px 24px;
+  border-radius: 24px; border: 2px dashed var(--line); background: var(--surface-2);
+  transition: border-color .3s, background .3s, transform .3s;
+}
+.bilhete-numero {
+  font-size: clamp(64px, 12vw, 148px); font-weight: 800; line-height: 1;
+  color: var(--brand); font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+}
+.bilhete-nome {
+  margin-top: 16px; font-size: clamp(22px, 4vw, 44px); font-weight: 800; line-height: 1.15;
+  color: var(--ink); overflow-wrap: anywhere;
+}
+.bilhete-tel { margin-top: 8px; min-height: 1.4em; font-size: clamp(16px, 2vw, 22px); font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.bilhete.girando .bilhete-numero, .bilhete.girando .bilhete-nome { color: var(--muted); }
+.bilhete.revelado { border-style: solid; border-color: var(--accent); background: var(--surface); animation: pulsa .6s ease-out; }
+.bilhete.revelado .bilhete-numero { color: var(--accent); }
+@keyframes pulsa { 0% { transform: scale(.94); } 60% { transform: scale(1.03); } 100% { transform: scale(1); } }
+
+.btn.sortear {
+  height: 64px; padding: 0 48px; border-radius: 999px;
+  background: var(--sortear-bg); color: var(--sortear-ink); font-size: 22px; font-weight: 800;
+  box-shadow: 0 8px 24px rgba(52, 71, 77, .25);
+}
+.btn.sortear:hover:not(:disabled) { background: var(--sortear-hover); }
+.btn.sortear:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+.palco-erro { min-height: 22px; color: var(--error); font-weight: 600; }
+
+/* Confete: peças caindo do topo do palco */
+.confete { position: absolute; inset: 0; pointer-events: none; }
+.confete i {
+  position: absolute; top: -16px; width: 10px; height: 16px; border-radius: 2px;
+  animation-name: cai; animation-timing-function: cubic-bezier(.25, .6, .5, 1); animation-fill-mode: forwards;
+}
+@keyframes cai {
+  to { transform: translate(var(--x), calc(100vh + 40px)) rotate(var(--r)); opacity: .9; }
+}
+
+/* ---------- Lateral ---------- */
+.lateral { display: grid; gap: 20px; }
+.link { border: 0; background: none; font: inherit; font-size: 14px; font-weight: 700; color: var(--muted); cursor: pointer; text-decoration: underline; }
+.link:hover { color: var(--error); }
+
+.ganhadores { list-style: none; display: grid; gap: 8px; margin-bottom: 4px; }
+.ganhadores li {
+  display: grid; grid-template-columns: 30px auto minmax(0, 1fr) auto; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 12px; background: var(--surface-2);
+}
+.ganhadores .pos { font-weight: 800; color: var(--accent); }
+.ganhadores .num { font-weight: 800; font-variant-numeric: tabular-nums; padding: 2px 8px; border-radius: 6px; background: var(--line); }
+.ganhadores .quem { min-width: 0; }
+.ganhadores .quem strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ganhadores .quem small { display: block; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.devolver {
+  width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line);
+  background: transparent; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer;
+}
+.devolver:hover { color: var(--error); border-color: var(--error); }
+
+.check { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 18px; font-weight: 700; cursor: pointer; }
+.check input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--brand); flex: none; }
+.check small { display: block; font-weight: 500; font-size: 13px; color: var(--muted); }
+#excluidos {
+  width: 100%; height: 42px; padding: 0 12px; margin-bottom: 6px;
+  font: inherit; font-size: 15px; color: var(--ink);
+  background: var(--surface-2); border: 1.5px solid var(--line); border-radius: 10px; outline: none;
+}
+#excluidos:focus { border-color: var(--brand); }
+.btn:focus-visible, .link:focus-visible, .devolver:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+@media (max-width: 1000px) {
+  .sorteador { grid-template-columns: minmax(0, 1fr); }
+  .palco { min-height: 0; }
+}
+@media (max-width: 560px) {
+  .btn.sortear { width: 100%; padding: 0 16px; }
+  .bilhete { padding: 28px 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bilhete.revelado { animation: none; }
+}

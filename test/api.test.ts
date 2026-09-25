@@ -350,4 +350,21 @@ describe("API de leads", () => {
     assert.ok(store.all().every((x) => (x.origem === "sorteio") === (x.numero !== undefined)));
     assert.equal(m.leads[0]?.cidade, undefined);
   });
+
+  it("o sorteador lista só os inscritos do sorteio, por número", async () => {
+    const page = await fetch(`${baseUrl}/sorteador`);
+    assert.equal(page.status, 200);
+    assert.match(await page.text(), /src="\/js\/sorteador\.js/);
+
+    const r = (await (await fetch(`${baseUrl}/api/sorteio`)).json()) as {
+      evento: string;
+      participantes: { numero: number; nome: string; telefone: string }[];
+    };
+    assert.equal(r.evento, "Evento Teste");
+    const numeros = r.participantes.map((x) => x.numero);
+    assert.ok(numeros.length >= 2);
+    assert.deepEqual(numeros, [...numeros].sort((a, b) => a - b));
+    assert.equal(numeros.length, store.all().filter((l) => l.origem === "sorteio").length);
+    assert.deepEqual(Object.keys(r.participantes[0]!).sort(), ["nome", "numero", "telefone"]);
+  });
 });
