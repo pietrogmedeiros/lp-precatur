@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { createHash, timingSafeEqual } from "node:crypto";
 import express, { type NextFunction, type Request, type Response } from "express";
-import { ORIGENS, ORIGEM_PADRAO, camposForaDaPagina, type LeadField, type LeadResponse, type Origem, type PublicConfig } from "../shared/lead.js";
+import { ORIGENS, ORIGENS_NUMERADAS, ORIGEM_PADRAO, camposForaDaPagina, type LeadField, type LeadResponse, type Origem, type PublicConfig } from "../shared/lead.js";
 import { buildMetrics } from "./metrics.js";
 import { leadRequestSchema } from "./schema.js";
 import type { AppConfig } from "./config.js";
@@ -75,7 +75,7 @@ function adminTokenFrom(req: Request): string | undefined {
 
 function toCsv(leads: StoredLead[]): string {
   const cols = [
-    "recebido_em", "nome", "telefone", "cidade", "uf", "agente", "perfil", "tem_precatorio", "tipo_precatorio",
+    "numero", "recebido_em", "nome", "telefone", "cidade", "uf", "agente", "perfil", "tem_precatorio", "tipo_precatorio",
     "prioridade", "originador", "observacoes", "evento", "origem", "enviado", "tentativas", "ultimo_erro", "id",
   ] as const;
   const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
@@ -105,6 +105,7 @@ function versionAssets(html: string, publicDir: string): string {
 const PAGINAS: Record<Origem, string[]> = {
   lp: ["/", "/index.html"],
   "palestra-rafael": ["/palestra-rafael"],
+  sorteio: ["/sorteio"],
 };
 
 /** ?origem=... válido, ou undefined (= todas as páginas). */
@@ -185,13 +186,15 @@ export function createApp({ config, store, delivery, dataVolume = null }: Deps) 
       }
 
       // O front reenvia leads que ficaram na fila offline; o id evita duplicar.
-      if (store.has(data.id)) {
-        res.status(200).json({ ok: true, duplicado: true });
+      const existente = store.get(data.id);
+      if (existente) {
+        res.status(200).json({ ok: true, duplicado: true, ...(existente.numero ? { numero: existente.numero } : {}) });
         return;
       }
 
       const lead: StoredLead = {
         ...data,
+        ...(ORIGENS_NUMERADAS.includes(data.origem) ? { numero: store.nextNumero(data.origem) } : {}),
         evento: config.evento,
         recebido_em: new Date().toISOString(),
         enviado: false,
@@ -200,7 +203,7 @@ export function createApp({ config, store, delivery, dataVolume = null }: Deps) 
       await store.save(lead);
       // O lead já está salvo em disco: responde sucesso mesmo se o n8n falhar (o reenvio é automático).
       await delivery.deliver(lead);
-      res.status(201).json({ ok: true });
+      res.status(201).json({ ok: true, ...(lead.numero ? { numero: lead.numero } : {}) });
     },
   );
 

@@ -1,4 +1,4 @@
-import { ORIGENS, ORIGEM_PADRAO, ORIGEM_ROTULOS, ORIGINADORES, PERFIS, PRIORIDADES, TIPOS_PRECATORIO, type Origem } from "../shared/lead.js";
+import { ORIGENS, ORIGEM_PADRAO, vaiAoN8n, ORIGEM_ROTULOS, ORIGINADORES, PERFIS, PRIORIDADES, TIPOS_PRECATORIO, type Origem } from "../shared/lead.js";
 import type { AgentMetrics, Breakdown, MetricsLead, MetricsResponse, OrigemMetrics } from "../shared/metrics.js";
 import type { StoredLead } from "./store.js";
 
@@ -56,7 +56,7 @@ export function buildMetrics(
       rotulo: ORIGEM_ROTULOS[origem],
       total: daPagina.length,
       hoje: daPagina.filter((l) => dayOf(l.recebido_em) === today).length,
-      pendentes: daPagina.filter((l) => !l.enviado).length,
+      pendentes: daPagina.filter((l) => !l.enviado && vaiAoN8n(l.origem)).length,
     };
   });
   const leads = opts.origem ? todos.filter((l) => origemOf(l) === opts.origem) : todos;
@@ -71,7 +71,7 @@ export function buildMetrics(
 
   for (const lead of leads) {
     const isToday = dayOf(lead.recebido_em) === today;
-    // Leads da palestra não têm agente: entram nos totais, mas não no ranking.
+    // Leads das palestras não têm agente: entram nos totais, mas não no ranking.
     if (lead.agente) {
       const a = byAgent.get(lead.agente) ?? { agente: lead.agente, total: 0, hoje: 0, pendentes: 0 };
       a.total += 1;
@@ -81,21 +81,22 @@ export function buildMetrics(
       byAgent.set(lead.agente, a);
     }
 
-    byUf.set(lead.uf, (byUf.get(lead.uf) ?? 0) + 1);
+    if (lead.uf) byUf.set(lead.uf, (byUf.get(lead.uf) ?? 0) + 1);
     if (isToday) {
       hoje += 1;
       hours[hourOf(lead.recebido_em)]!.total += 1;
     }
-    if (!lead.enviado) pendentes += 1;
+    if (!lead.enviado && vaiAoN8n(lead.origem)) pendentes += 1;
   }
 
   const metricsLeads: MetricsLead[] = leads
     .map((l) => ({
       id: l.id,
+      ...(l.numero ? { numero: l.numero } : {}),
       nome: l.nome,
       telefone: l.telefone,
-      cidade: l.cidade,
-      uf: l.uf,
+      ...(l.cidade ? { cidade: l.cidade } : {}),
+      ...(l.uf ? { uf: l.uf } : {}),
       ...(l.agente ? { agente: l.agente } : {}),
       ...(l.perfil ? { perfil: l.perfil } : {}),
       ...(l.tem_precatorio ? { tem_precatorio: l.tem_precatorio } : {}),

@@ -30,25 +30,35 @@ export type Originador = (typeof ORIGINADORES)[number];
 export const OBSERVACOES_MAX = 1000;
 
 /** Páginas de captação: cada uma tem sua URL, seu webhook no n8n e seu recorte no painel. */
-export const ORIGENS = ["lp", "palestra-rafael"] as const;
+export const ORIGENS = ["lp", "palestra-rafael", "sorteio"] as const;
 export type Origem = (typeof ORIGENS)[number];
 /** Leads anteriores ao campo (e da fila offline antiga) vieram da LP principal. */
 export const ORIGEM_PADRAO: Origem = "lp";
 export const ORIGEM_ROTULOS: Record<Origem, string> = {
   lp: "LP principal",
   "palestra-rafael": "Palestra Rafael",
+  sorteio: "Sorteio",
 };
+
+/** Páginas que só captam: os leads ficam no servidor (painel e CSV) e não vão ao n8n. */
+export const ORIGENS_SO_CAPTACAO: readonly Origem[] = ["sorteio"];
+/** Páginas cujos leads recebem um número sequencial (1, 2, 3...), usado no sorteio. */
+export const ORIGENS_NUMERADAS: readonly Origem[] = ["sorteio"];
+export const vaiAoN8n = (origem: Origem | undefined): boolean => !ORIGENS_SO_CAPTACAO.includes(origem ?? ORIGEM_PADRAO);
 
 /**
  * Campos que só existem em algumas páginas; os demais são comuns a todas.
  * A LP principal tem a qualificação feita pelo agente no estande; a palestra não tem agente,
- * e pergunta o originador.
+ * e pergunta o originador; o sorteio só pede nome e telefone.
  */
-export const CAMPOS_EXCLUSIVOS = ["agente", "tem_precatorio", "tipo_precatorio", "prioridade", "originador"] as const;
+export const CAMPOS_EXCLUSIVOS = [
+  "cidade", "uf", "perfil", "agente", "tem_precatorio", "tipo_precatorio", "prioridade", "originador", "observacoes",
+] as const;
 export type CampoExclusivo = (typeof CAMPOS_EXCLUSIVOS)[number];
 export const CAMPOS_DA_PAGINA: Record<Origem, readonly CampoExclusivo[]> = {
-  lp: ["agente", "tem_precatorio", "tipo_precatorio", "prioridade"],
-  "palestra-rafael": ["originador"],
+  lp: ["cidade", "uf", "perfil", "agente", "tem_precatorio", "tipo_precatorio", "prioridade", "observacoes"],
+  "palestra-rafael": ["cidade", "uf", "perfil", "originador", "observacoes"],
+  sorteio: [],
 };
 
 /** Campos que a página não pergunta (e que o servidor descarta se vierem). */
@@ -88,11 +98,11 @@ export function formatPhone(value: string): string {
 export interface LeadFields {
   nome: string;
   telefone: string;
-  cidade: string;
-  uf: UF;
-  /** Agente, precatório, prioridade e originador só existem nas páginas que os pedem (CAMPOS_DA_PAGINA). */
+  /** Tirando nome e telefone, os campos só existem nas páginas que os pedem (CAMPOS_DA_PAGINA). */
+  cidade?: string;
+  uf?: UF;
   agente?: string;
-  perfil: Perfil;
+  perfil?: Perfil;
   tem_precatorio?: TemPrecatorio;
   /** Só existe quando tem_precatorio é "Tem". */
   tipo_precatorio?: TipoPrecatorio;
@@ -164,5 +174,7 @@ export interface PublicConfig {
 export interface LeadResponse {
   ok: boolean;
   duplicado?: boolean;
+  /** Número do lead nas páginas numeradas (ORIGENS_NUMERADAS). */
+  numero?: number;
   erros?: Partial<Record<LeadField | "geral", string>>;
 }

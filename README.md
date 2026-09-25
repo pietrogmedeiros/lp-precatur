@@ -102,9 +102,10 @@ docker run -p 3000:3000 --env-file .env -v $(pwd)/data:/app/data lp-precatur
 |---|---|---|
 | `GET` | `/` | Landing page |
 | `GET` | `/palestra-rafael` | A mesma landing page, sem agente, precatório e prioridade e com o campo Originador; os leads vão para `N8N_WEBHOOK_URL_PALESTRA_RAFAEL` |
+| `GET` | `/sorteio` | A página da palestra só com nome e telefone, sem a faixa "Análise 100% gratuita". Só capta: os leads (`origem: "sorteio"`) ficam no painel e no CSV e não vão ao n8n |
 | `POST` | `/api/leads` | Recebe um lead (201 criado, 200 duplicado, 400 com erros por campo) |
 | `GET` | `/metrics` | Painel: leads por página, por agente, por hora e por UF, e a lista de leads com filtro por agente |
-| `GET` | `/api/metrics` | Dados do painel em JSON (`?origem=lp` ou `?origem=palestra-rafael` filtra por página) |
+| `GET` | `/api/metrics` | Dados do painel em JSON (`?origem=lp`, `?origem=palestra-rafael` ou `?origem=sorteio` filtra por página) |
 | `GET` | `/metrics/leads.csv` | CSV com a mesma regra de acesso do painel (aceita o mesmo `?origem=`) |
 | `GET` | `/api/health` | Status, total de leads e pendentes de envio ao n8n |
 | `GET` | `/admin/leads.csv?token=...` | Exporta todos os leads em CSV (abre direto no Excel) |

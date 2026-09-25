@@ -193,9 +193,11 @@ header.top img { height: 40px; width: auto; }
 .form-body .sub { color: var(--muted); font-size: 16px; margin-bottom: 26px; }
 
 .field { margin-bottom: 18px; }
-/* Campos exclusivos de uma página: o servidor marca o <body> com a origem e os das outras somem. */
-body:not([data-origem="lp"]) [data-so="lp"],
-body:not([data-origem="palestra-rafael"]) [data-so="palestra-rafael"] { display: none; }
+/* Campos exclusivos de algumas páginas: o servidor marca o <body> com a origem e data-so lista
+   as páginas em que o elemento aparece. */
+body[data-origem="lp"] [data-so]:not([data-so~="lp"]),
+body[data-origem="palestra-rafael"] [data-so]:not([data-so~="palestra-rafael"]),
+body[data-origem="sorteio"] [data-so]:not([data-so~="sorteio"]) { display: none; }
 .row { display: grid; grid-template-columns: 1fr 110px; gap: 12px; }
 label.lbl {
   display: block;

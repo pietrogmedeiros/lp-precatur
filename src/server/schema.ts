@@ -29,10 +29,10 @@ export const leadRequestSchema = z
     criado_em: z.iso.datetime({ error: "Data inválida." }),
     nome: z.string().trim().superRefine(rule("nome")),
     telefone: z.string().trim().superRefine(rule("telefone")).transform(formatPhone),
-    cidade: z.string().trim().superRefine(rule("cidade")),
-    uf: z.enum(UFS, { error: fieldValidators.uf("") ?? undefined }),
+    cidade: z.string().trim().superRefine(rule("cidade")).optional(),
+    uf: z.enum(UFS, { error: fieldValidators.uf("") ?? undefined }).optional(),
     agente: z.string().trim().superRefine(rule("agente")).optional(),
-    perfil: z.enum(PERFIS, { error: fieldValidators.perfil("") ?? undefined }),
+    perfil: z.enum(PERFIS, { error: fieldValidators.perfil("") ?? undefined }).optional(),
     tem_precatorio: z.enum(TEM_PRECATORIO, { error: fieldValidators.tem_precatorio("") ?? undefined }).optional(),
     tipo_precatorio: z.enum(TIPOS_PRECATORIO).optional(),
     prioridade: z.enum(PRIORIDADES, { error: fieldValidators.prioridade("") ?? undefined }).optional(),
@@ -52,7 +52,7 @@ export const leadRequestSchema = z
     // Cada página exige só os próprios campos; os de outras páginas o servidor descarta.
     const campos = CAMPOS_DA_PAGINA[data.origem];
     for (const campo of campos) {
-      if (campo === "tipo_precatorio") continue; // condicional, validado abaixo
+      if (campo === "tipo_precatorio" || campo === "observacoes") continue; // condicional / opcional
       if (data[campo] === undefined) ctx.addIssue({ code: "custom", path: [campo], message: fieldValidators[campo]("") ?? "" });
     }
     if (!campos.includes("tipo_precatorio")) return;

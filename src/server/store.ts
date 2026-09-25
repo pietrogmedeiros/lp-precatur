@@ -1,6 +1,6 @@
 import { appendFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import type { LeadFields, Origem } from "../shared/lead.js";
+import { vaiAoN8n, type LeadFields, type Origem } from "../shared/lead.js";
 
 export interface StoredLead extends LeadFields {
   id: string;
@@ -13,6 +13,8 @@ export interface StoredLead extends LeadFields {
   enviado_em?: string;
   tentativas: number;
   ultimo_erro?: string;
+  /** Número sequencial por página (1 a N), só nas páginas numeradas; é o número do sorteio. */
+  numero?: number;
 }
 
 /**
@@ -66,11 +68,21 @@ export class LeadStore {
     return write;
   }
 
+  /**
+   * Próximo número da página. É síncrono: chamado logo antes do save, sem await no meio,
+   * dois leads simultâneos nunca recebem o mesmo número.
+   */
+  nextNumero(origem: Origem): number {
+    let max = 0;
+    for (const l of this.leads.values()) if (l.origem === origem && l.numero && l.numero > max) max = l.numero;
+    return max + 1;
+  }
+
   all(): StoredLead[] {
     return [...this.leads.values()].sort((a, b) => a.recebido_em.localeCompare(b.recebido_em));
   }
 
   pending(): StoredLead[] {
-    return this.all().filter((l) => !l.enviado);
+    return this.all().filter((l) => !l.enviado && vaiAoN8n(l.origem));
   }
 }

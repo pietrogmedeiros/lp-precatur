@@ -65,7 +65,7 @@ function saveQueue(queue: LeadRequest[]): void {
   }
 }
 
-type SendResult = { status: "ok" } | { status: "invalid"; body: LeadResponse } | { status: "retry" };
+type SendResult = { status: "ok"; numero?: number } | { status: "invalid"; body: LeadResponse } | { status: "retry" };
 
 async function postLead(lead: LeadRequest): Promise<SendResult> {
   try {
@@ -74,7 +74,7 @@ async function postLead(lead: LeadRequest): Promise<SendResult> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(lead),
     });
-    if (res.ok) return { status: "ok" };
+    if (res.ok) return { status: "ok", numero: ((await res.json()) as LeadResponse).numero };
     if (res.status === 400) return { status: "invalid", body: (await res.json()) as LeadResponse };
     return { status: "retry" };
   } catch {
@@ -293,10 +293,11 @@ function setLoading(loading: boolean): void {
   btn.classList.toggle("loading", loading);
 }
 
-function showSuccess(lead: LeadRequest): void {
+function showSuccess(lead: LeadRequest, numero?: number): void {
   const firstName = lead.nome.trim().split(/\s+/)[0];
-  $("#success-msg").textContent =
-    `Obrigado, ${firstName}! Em breve um especialista da Precatur entrará em contato pelo ${formatPhone(lead.telefone)}.`;
+  $("#success-msg").textContent = numero
+    ? `Obrigado, ${firstName}! Você está participando do sorteio com o número ${numero}.`
+    : `Obrigado, ${firstName}! Em breve um especialista da Precatur entrará em contato pelo ${formatPhone(lead.telefone)}.`;
   card.classList.add("done");
   card.scrollIntoView({ behavior: "smooth", block: "center" });
   startAutoReset();
@@ -313,10 +314,10 @@ form.addEventListener("submit", async (e) => {
     id: uuid(),
     nome: value("nome").trim(),
     telefone: value("telefone").trim(),
-    cidade: value("cidade").trim(),
-    uf: value("uf") as LeadRequest["uf"],
-    perfil: value("perfil") as LeadRequest["perfil"],
     // Só vai o que a página pergunta: sem precatório não há tipo, e observação vazia não vira "".
+    ...(perguntado("cidade") ? { cidade: value("cidade").trim() } : {}),
+    ...(perguntado("uf") ? { uf: value("uf") as LeadRequest["uf"] } : {}),
+    ...(perguntado("perfil") ? { perfil: value("perfil") as LeadRequest["perfil"] } : {}),
     ...(perguntado("agente") ? { agente: value("agente") } : {}),
     ...(perguntado("originador") ? { originador: value("originador") as LeadRequest["originador"] } : {}),
     ...(perguntado("tem_precatorio") ? { tem_precatorio: temPrecatorio } : {}),
@@ -324,7 +325,7 @@ form.addEventListener("submit", async (e) => {
       ? { tipo_precatorio: value("tipo_precatorio") as LeadRequest["tipo_precatorio"] }
       : {}),
     ...(perguntado("prioridade") ? { prioridade: value("prioridade") as LeadRequest["prioridade"] } : {}),
-    ...(observacoes ? { observacoes } : {}),
+    ...(perguntado("observacoes") && observacoes ? { observacoes } : {}),
     consentimento_lgpd: true,
     criado_em: new Date().toISOString(),
     origem: config.origem,
@@ -348,7 +349,7 @@ form.addEventListener("submit", async (e) => {
     // Sem conexão com o servidor: guarda no aparelho e reenvia depois. O lead não se perde.
     saveQueue([...loadQueue(), lead]);
   }
-  showSuccess(lead);
+  showSuccess(lead, result.status === "ok" ? result.numero : undefined);
 });
 
 function resetForm(): void {

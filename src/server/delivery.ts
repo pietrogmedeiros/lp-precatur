@@ -1,4 +1,4 @@
-import { ORIGEM_PADRAO, type Origem } from "../shared/lead.js";
+import { ORIGEM_PADRAO, vaiAoN8n, type Origem } from "../shared/lead.js";
 import type { LeadStore, StoredLead } from "./store.js";
 
 /** Dados enviados ao n8n (sem os campos internos de controle de entrega). */
@@ -35,8 +35,9 @@ export class LeadDelivery {
     private readonly timeoutMs: number,
   ) {}
 
-  /** Cada página de captação tem seu próprio webhook. */
+  /** Cada página de captação tem seu próprio webhook; as que só captam não têm nenhum. */
   private urlFor(lead: StoredLead): string {
+    if (!vaiAoN8n(lead.origem)) return "";
     return this.webhooks[lead.origem ?? ORIGEM_PADRAO] ?? "";
   }
 

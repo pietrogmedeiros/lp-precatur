@@ -1,4 +1,4 @@
-import { ORIGEM_ROTULOS, type Origem } from "../shared/lead.js";
+import { ORIGEM_ROTULOS, vaiAoN8n, type Origem } from "../shared/lead.js";
 import type { AgentMetrics, Breakdown, MetricsLead, MetricsResponse } from "../shared/metrics.js";
 
 const TOKEN_KEY = "precatur_metrics_token";
@@ -164,7 +164,9 @@ function render(): void {
   $("#kpi-agentes").textContent = `${d.agentes.filter((a) => a.total > 0).length}/${d.agentes.length}`;
   $("#kpi-alta").textContent = fmtInt.format(d.alta_prioridade);
   $("#kpi-n8n").replaceChildren(
-    statusBadge(d.pendentes === 0, "Todos enviados", `${d.pendentes} pendente${d.pendentes > 1 ? "s" : ""}`),
+    d.origem && !vaiAoN8n(d.origem)
+      ? "Só captação"
+      : statusBadge(d.pendentes === 0, "Todos enviados", `${d.pendentes} pendente${d.pendentes > 1 ? "s" : ""}`),
   );
 
   renderRanking(d.agentes, d.total);
@@ -332,7 +334,7 @@ function renderTable(): void {
     if (selectedAgent && l.agente !== selectedAgent) return false;
     if (selectedPriority && (l.prioridade ?? "Não informado") !== selectedPriority) return false;
     if (!q) return true;
-    if (normalize(`${l.nome} ${l.cidade} ${l.uf} ${l.perfil ?? ""} ${l.observacoes ?? ""}`).includes(q)) return true;
+    if (normalize(`${l.nome} ${l.cidade ?? ""} ${l.uf ?? ""} ${l.perfil ?? ""} ${l.observacoes ?? ""}`).includes(q)) return true;
     return qDigits.length >= 3 && l.telefone.replace(/\D/g, "").includes(qDigits);
   });
 
@@ -347,9 +349,10 @@ function renderTable(): void {
 function row(l: MetricsLead): HTMLTableRowElement {
   const digits = l.telefone.replace(/\D/g, "");
   const wa = h("a", { href: `https://wa.me/55${digits}`, target: "_blank", rel: "noopener", title: "Abrir no WhatsApp" }, l.telefone);
-  const badge = statusBadge(l.enviado, "Enviado", "Pendente");
+  // Páginas que só captam não mandam ao n8n: não há o que ficar pendente.
+  const badge = vaiAoN8n(l.origem) ? statusBadge(l.enviado, "Enviado", "Pendente") : h("span", { class: "muted-cell" }, "Só captação");
   if (!l.enviado && l.ultimo_erro) badge.title = `${l.tentativas} tentativa(s): ${l.ultimo_erro}`;
-  const nome = h("td", { class: "name" }, l.nome);
+  const nome = h("td", { class: "name" }, l.numero ? h("span", { class: "numero" }, `Nº ${l.numero}`) : null, l.nome);
   // Observação completa fica no title; a célula mostra só a primeira linha.
   if (l.observacoes) nome.append(h("span", { class: "obs", title: l.observacoes }, l.observacoes));
 
@@ -365,7 +368,7 @@ function row(l: MetricsLead): HTMLTableRowElement {
     h("td", {}, ORIGEM_ROTULOS[l.origem] ?? l.origem),
     nome,
     h("td", {}, wa),
-    h("td", {}, `${l.cidade}/${l.uf}`),
+    h("td", { class: l.cidade ? "" : "muted-cell" }, l.cidade ? `${l.cidade}/${l.uf}` : "—"),
     h("td", { class: l.agente ? "" : "muted-cell" }, l.agente ?? "—"),
     h("td", { class: l.perfil ? "" : "muted-cell" }, l.perfil ?? "—"),
     h("td", { class: l.originador ? "" : "muted-cell" }, l.originador ?? "—"),

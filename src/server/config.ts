@@ -49,6 +49,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     webhooks: {
       lp: env.N8N_WEBHOOK_URL ?? "",
       "palestra-rafael": env.N8N_WEBHOOK_URL_PALESTRA_RAFAEL ?? "",
+      // O sorteio só capta: os leads ficam no painel/CSV, sem n8n (ORIGENS_SO_CAPTACAO).
+      sorteio: "",
     },
     webhookTimeoutMs: int(env.N8N_TIMEOUT_MS, 10_000),
     retryIntervalMs: int(env.RETRY_INTERVAL_MS, 60_000),

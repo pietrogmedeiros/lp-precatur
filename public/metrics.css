@@ -205,6 +205,7 @@ td { padding: 12px 20px; border-bottom: 1px solid var(--grid); color: var(--ink)
 tbody tr:hover td { background: var(--surface-2); }
 td.when { color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
 td.name { font-weight: 700; }
+td.name .numero { margin-right: 8px; padding: 2px 7px; border-radius: 6px; background: var(--line, rgba(127,127,127,.18)); font-variant-numeric: tabular-nums; }
 td a { color: var(--ink); font-weight: 600; text-decoration: none; border-bottom: 1px dashed var(--muted); white-space: nowrap; }
 td a:hover { border-bottom-style: solid; }
 .tag { display: inline-block; font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }

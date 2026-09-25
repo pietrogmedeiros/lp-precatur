@@ -11,11 +11,13 @@ export interface AgentMetrics {
 
 export interface MetricsLead {
   id: string;
+  /** Número do sorteio (só nas páginas numeradas). */
+  numero?: number;
   nome: string;
   telefone: string;
-  cidade: string;
-  uf: UF;
-  /** Leads captados antes destes campos existirem, ou pela palestra, não os têm. */
+  /** Leads captados antes destes campos existirem, ou por páginas que não os pedem, não os têm. */
+  cidade?: string;
+  uf?: UF;
   agente?: string;
   perfil?: Perfil;
   tem_precatorio?: TemPrecatorio;

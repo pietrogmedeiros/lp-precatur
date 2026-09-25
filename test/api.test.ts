@@ -70,7 +70,12 @@ describe("API de leads", () => {
 
   before(async () => {
     const webhookUrl = await webhook.start();
-    const webhooks = { lp: webhookUrl, "palestra-rafael": webhookUrl.replace(/evento$/, "palestra-rafael") };
+    const webhooks = {
+      lp: webhookUrl,
+      "palestra-rafael": webhookUrl.replace(/evento$/, "palestra-rafael"),
+      // Mesmo com URL configurada, o sorteio não pode ir ao n8n.
+      sorteio: webhookUrl.replace(/evento$/, "sorteio"),
+    };
     dataDir = await mkdtemp(path.join(tmpdir(), "lp-precatur-"));
     const config = {
       ...loadConfig({}),
@@ -284,10 +289,60 @@ describe("API de leads", () => {
     assert.equal(palestra.total, 2);
     assert.deepEqual(palestra.leads.map((x) => x.origem), ["palestra-rafael", "palestra-rafael"]);
     assert.deepEqual(palestra.origens, todas.origens, "o resumo por página ignora o filtro");
-    assert.deepEqual(todas.origens.map((o) => o.total), [todas.total - 2, 2]);
+    assert.deepEqual(todas.origens.map((o) => o.total), [todas.total - 2, 2, 0]);
 
     const csv = await (await fetch(`${baseUrl}/metrics/leads.csv?origem=palestra-rafael`)).text();
     assert.equal(csv.trim().split("\r\n").length, 3);
     assert.match(csv, /"palestra-rafael"/);
+  });
+
+  it("o sorteio só pede nome e telefone, e só capta (não vai ao n8n)", async () => {
+    const html = await (await fetch(`${baseUrl}/sorteio`)).text();
+    assert.match(html, /<body data-origem="sorteio">/);
+
+    const { nome, telefone, id, criado_em, consentimento_lgpd } = lead();
+    const l = { id, criado_em, nome, telefone, consentimento_lgpd, origem: "sorteio" };
+    const res = await post(l);
+    assert.equal(res.status, 201);
+    assert.equal(((await res.json()) as { numero?: number }).numero, 1);
+    const salvo = store.get(l.id);
+    assert.equal(salvo?.origem, "sorteio");
+    assert.equal(salvo?.numero, 1);
+    // Reenvio da fila offline devolve o mesmo número, sem gastar outro.
+    assert.equal(((await (await post(l)).json()) as { numero?: number }).numero, 1);
+    assert.equal(salvo?.cidade, undefined);
+    assert.equal(salvo?.perfil, undefined);
+
+    // Campos de outras páginas enviados por engano são descartados.
+    const extra = { ...lead(), originador: "Outro", origem: "sorteio" };
+    assert.equal((await post(extra)).status, 201);
+    assert.equal(store.get(extra.id)?.numero, 2);
+    for (const campo of ["cidade", "uf", "perfil", "agente", "originador", "observacoes"] as const) {
+      assert.equal(store.get(extra.id)?.[campo], undefined, campo);
+    }
+
+    assert.ok(!webhook.paths.includes("/webhook/sorteio"), "o sorteio não vai ao n8n");
+    assert.ok(!webhook.received.some((r) => (r as Record<string, unknown>).origem === "sorteio"));
+    assert.ok(!store.pending().some((x) => x.origem === "sorteio"), "não fica pendente");
+
+    const csv = await (await fetch(`${baseUrl}/metrics/leads.csv?origem=sorteio`)).text();
+    assert.equal(csv.trim().split("\r\n").length, 3);
+
+    const m = (await (await fetch(`${baseUrl}/api/metrics?origem=sorteio`)).json()) as {
+      total: number;
+      pendentes: number;
+      leads: { cidade?: string; uf?: string; numero?: number }[];
+    };
+    assert.equal(m.total, 2);
+    assert.equal(m.pendentes, 0);
+    assert.deepEqual(m.leads.map((x) => x.numero), [2, 1]);
+
+    // Cadastros simultâneos nunca repetem número.
+    const juntos = Array.from({ length: 5 }, () => ({ ...l, id: randomUUID() }));
+    const numeros = await Promise.all(juntos.map(async (x) => ((await (await post(x)).json()) as { numero: number }).numero));
+    assert.deepEqual(numeros.sort((a, b) => a - b), [3, 4, 5, 6, 7]);
+    // Só o sorteio é numerado.
+    assert.ok(store.all().every((x) => (x.origem === "sorteio") === (x.numero !== undefined)));
+    assert.equal(m.leads[0]?.cidade, undefined);
   });
 });
