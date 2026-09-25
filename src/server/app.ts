@@ -229,6 +229,8 @@ export function createApp({ config, store, delivery, dataVolume = null }: Deps) 
 
   app.get("/api/metrics", rateLimit(config.rateLimitPerMinute), (req, res) => {
     res.setHeader("Cache-Control", "no-store");
+    // O painel compara com o valor da primeira carga e se recarrega após um deploy (JS novo).
+    res.setHeader("X-Iniciado-Em", iniciadoEm);
     if (!canViewMetrics(req)) {
       res.status(401).json({ ok: false, erro: "Token inválido." });
       return;

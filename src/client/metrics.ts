@@ -109,6 +109,9 @@ function showLogin(message = ""): void {
   $<HTMLInputElement>("#token").focus();
 }
 
+/** Processo do servidor visto na primeira carga; se mudar, houve deploy e o JS desta aba está velho. */
+let servidorIniciadoEm: string | null = null;
+
 async function load(): Promise<void> {
   refreshBtn.classList.add("spin");
   try {
@@ -122,6 +125,12 @@ async function load(): Promise<void> {
       return;
     }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const iniciadoEm = res.headers.get("X-Iniciado-Em");
+    if (iniciadoEm && servidorIniciadoEm && iniciadoEm !== servidorIniciadoEm) {
+      location.reload();
+      return;
+    }
+    servidorIniciadoEm ??= iniciadoEm;
     // Troca de aba no meio da requisição: descarta a resposta da aba anterior.
     if (origem !== selectedOrigem) return;
     data = (await res.json()) as MetricsResponse;

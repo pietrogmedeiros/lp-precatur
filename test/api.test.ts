@@ -296,6 +296,11 @@ describe("API de leads", () => {
     assert.match(csv, /"palestra-rafael"/);
   });
 
+  it("o painel recebe o início do processo, para se recarregar após um deploy", async () => {
+    const res = await fetch(`${baseUrl}/api/metrics`);
+    assert.match(res.headers.get("x-iniciado-em") ?? "", /^\d{4}-\d{2}-\d{2}T/);
+  });
+
   it("o sorteio só pede nome e telefone, e só capta (não vai ao n8n)", async () => {
     const html = await (await fetch(`${baseUrl}/sorteio`)).text();
     assert.match(html, /<body data-origem="sorteio">/);
